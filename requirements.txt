@@ -1,4 +1,3 @@
-fastapi
-PyPDF2
-reportlab
+openai>=1.40.0
 requests
+reportlab
