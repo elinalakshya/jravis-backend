@@ -6,7 +6,14 @@ from pydantic import BaseModel
 import time
 import uuid
 
+# ------------------------------
+# Routers (Daily Reports, Streams, Auth)
+# ------------------------------
+# If you add streams/auth later, just import here
+from routers.report_router import router as report_router
+
 app = FastAPI()
+
 
 # ------------------------------
 # In-memory task queue
@@ -63,7 +70,7 @@ def task_done(task_id: str):
 
 
 # ------------------------------
-# 4️⃣ View all tasks (for daily/weekly reports)
+# 4️⃣ View all tasks
 # ------------------------------
 @app.get("/task/all")
 def view_all():
@@ -76,3 +83,9 @@ def view_all():
 @app.get("/healthz")
 def health_check():
     return {"status": "ok"}
+
+
+# ------------------------------
+# 6️⃣ Include Daily Report Router
+# ------------------------------
+app.include_router(report_router, prefix="/report")
