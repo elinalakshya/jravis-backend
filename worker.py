@@ -1,111 +1,89 @@
 import time
 import requests
-import uuid
-from settings import BACKEND_URL, LOCK_CODE
-from pdf_utils import generate_summary_pdf, generate_invoice_pdf, encrypt_pdf
-from email_utils import send_report_email
-
-import os
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-MESHY_API_KEY = os.getenv("MESHY_API_KEY")
-PRINTIFY_API_KEY = os.getenv("PRINTIFY_API_KEY")
-GUMROAD_TOKEN = os.getenv("GUMROAD_ACCESS_TOKEN")
-PAYHIP_API_KEY = os.getenv("PAYHIP_API_KEY")
+from settings import BACKEND_URL
+from publisher_printify import publish_printify_product
+from publisher_gumroad import publish_gumroad_product
+from publisher_payhip import publish_payhip_product
+from publisher_meshy import publish_meshy_asset
 
 
 def fetch_task():
+    """Fetch the next task from backend"""
     try:
-        r = requests.get(f"{BACKEND_URL}/task/next")
+        r = requests.get(f"{BACKEND_URL}/task/next", timeout=10)
         return r.json()
-    except:
+    except Exception as e:
+        print("❌ Error fetching task:", e)
         return {"status": "error"}
 
 
 def mark_done(task_id):
-    requests.post(f"{BACKEND_URL}/task/done/{task_id}")
+    """Mark task finished"""
+    try:
+        requests.post(f"{BACKEND_URL}/task/done/{task_id}")
+    except:
+        pass
 
 
-def process_daily_report(task):
-    print("🟦 Generating Daily Report...")
+def process_publish_task(task):
+    """Execute publishing tasks coming from JRAVIS-BRAIN"""
+    t = task["task"]
+    stream_type = t["type"]
 
-    # Fake example data (replace later with real data)
-    summary_data = [
-        "JRAVIS completed your tasks.",
-        "Income streams processed.",
-        "No issues detected."
-    ]
-    invoice_data = [
-        "Invoice #001 – ₹5000",
-        "Invoice #002 – ₹12000",
-    ]
+    print("\n==============================")
+    print(f"🚀 Executing Publish Task: {stream_type}")
+    print("==============================")
 
-    # Paths
-    summary = "summary.pdf"
-    locked_summary = "summary_locked.pdf"
-    invoice = "invoice.pdf"
+    try:
+        if stream_type == "printify_pod":
+            result = publish_printify_product()
+            print("🛍 Printify Published:", result)
 
-    generate_summary_pdf(summary, summary_data)
-    encrypt_pdf(summary, locked_summary, LOCK_CODE)
-    generate_invoice_pdf(invoice, invoice_data)
+        elif stream_type == "gumroad_upload":
+            result = publish_gumroad_product()
+            print("🛒 Gumroad Published:", result)
 
-    approval_token = str(uuid.uuid4())
+        elif stream_type == "payhip_upload":
+            result = publish_payhip_product()
+            print("💰 Payhip Published:", result)
 
-    send_report_email(locked_summary, invoice, approval_token)
+        elif stream_type == "meshy_assets":
+            result = publish_meshy_asset()
+            print("🧱 Meshy Asset Generated:", result)
 
-    print("✔ Daily report emailed.")
+        else:
+            print("⚠️ Unknown task type:", stream_type)
+            return
 
-    # Schedule worker to wait and auto-resume
-    time.sleep(600)
-    print("⏳ 10 minutes passed — auto-resume JRAVIS.")
-
-
-def process_weekly_report(task):
-    print("🟪 Generating Weekly Report...")
-
-    # Replace with real logic later
-    summary_data = ["Weekly stats summary"]
-    invoice_data = ["Weekly invoice"]
-
-    summary = "week_summary.pdf"
-    locked_summary = "week_summary_locked.pdf"
-    invoice = "week_invoice.pdf"
-
-    generate_summary_pdf(summary, summary_data)
-    encrypt_pdf(summary, locked_summary, LOCK_CODE)
-    generate_invoice_pdf(invoice, invoice_data)
-
-    approval_token = str(uuid.uuid4())
-    send_report_email(locked_summary, invoice, approval_token)
-
-    time.sleep(600)
-    print("Weekly auto-resume complete.")
+    except Exception as e:
+        print("❌ Publish Failed:", e)
 
 
 def run_worker():
-    print("🚀 JRAVIS Worker started…")
+    """Main worker loop — runs 24/7"""
+    print("🔥 JRAVIS WORKER — PUBLISH MODE ACTIVE")
+    print("📡 Listening for publishing tasks from JRAVIS BRAIN…\n")
 
     while True:
         task = fetch_task()
 
+        # If no tasks available
         if task.get("status") == "empty":
             time.sleep(2)
             continue
 
+        # If invalid task or backend returns error
         if "task" not in task:
             time.sleep(1)
             continue
 
-        t = task["task"]
+        # Process publish command
+        process_publish_task(task)
 
-        if t["type"] == "daily_report":
-            process_daily_report(task)
-        elif t["type"] == "weekly_report":
-            process_weekly_report(task)
-        elif t["type"] == "approval_received":
-            print("Boss approved — JRAVIS resuming…")
-
+        # Mark task as completed
         mark_done(task["id"])
+
+        # Small delay before next task
         time.sleep(1)
 
 
