@@ -1,8 +1,6 @@
-import requests
-from settings import GUMROAD_ACCESS_TOKEN, OPENAI_API_KEY
+from settings import GUMROAD_ACCESS_TOKEN
 
-def publish_gumroad(task):
-    print("💰 Publishing on Gumroad...")
-
-    product = "JRAVIS Gumroad Digital Product"
-    print("📤 Upload simulated — ready for real API call.")
+def publish_gumroad():
+    print("🛒 Publishing Gumroad product... (mock)")
+    print("📦 Upload prepared")
+    print("✅ Gumroad publish complete.")
