@@ -1,8 +1,9 @@
 import requests
 from settings import MESHY_API_KEY, OPENAI_API_KEY
 
-def publish_meshy():
-    print("🎨 Generating Meshy assets...")
+def publish_meshy_assets(task):
+    print("🎨 Generating Meshy 3D model...")
+    print("⛔ Meshy API route unavailable — skipping upload.")
 
     prompt = {
         "model": "gpt-4.1-mini",
