@@ -1,43 +1,59 @@
 import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email import encoders
-from email.mime.text import MIMEText
-from settings import EMAIL_USER, EMAIL_PASS, SMTP_HOST, SMTP_PORT
+import ssl
+from email.message import EmailMessage
+from settings import EMAIL_USER, EMAIL_PASS
 
-# TARGET EMAIL (Boss)
+# Always send to Boss
 EMAIL_TO = "nrveeresh327@gmail.com"
 
-def send_report_email(summary_pdf, invoice_pdf, approval_token):
-    msg = MIMEMultipart()
+
+def send_report_email(summary_pdf_path, invoice_pdf_path, approval_token):
+    msg = EmailMessage()
+    msg["Subject"] = "JRAVIS Daily Report – Approval Needed"
     msg["From"] = EMAIL_USER
     msg["To"] = EMAIL_TO
-    msg["Subject"] = "JRAVIS Daily Report – Approval Required"
 
-    body = f"""
-Boss,
+    msg.set_content(
+        f"""
+Hello Boss,
 
-Your daily report is ready.
+Your JRAVIS automated daily report is ready.
 
-Approval Code: {approval_token}
+Attached:
+1. Locked Summary Report (requires code)
+2. Invoice Report
 
-Regards,
-JRAVIS
+Approval Token: {approval_token}
+
+Please approve within 10 minutes to continue automation.
+
+– JRAVIS Automation System
 """
-    msg.attach(MIMEText(body, "plain"))
+    )
 
-    for file_path in [summary_pdf, invoice_pdf]:
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(open(file_path, "rb").read())
-        encoders.encode_base64(part)
-        part.add_header("Content-Disposition",
-                        f"attachment; filename={file_path}")
-        msg.attach(part)
+    # Attach Summary PDF
+    with open(summary_pdf_path, "rb") as f:
+        msg.add_attachment(
+            f.read(),
+            maintype="application",
+            subtype="pdf",
+            filename="summary_locked.pdf"
+        )
 
-    smtp = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
-    smtp.starttls()
-    smtp.login(EMAIL_USER, EMAIL_PASS)
-    smtp.sendmail(EMAIL_USER, EMAIL_TO, msg.as_string())
-    smtp.quit()
+    # Attach Invoice PDF
+    with open(invoice_pdf_path, "rb") as f:
+        msg.add_attachment(
+            f.read(),
+            maintype="application",
+            subtype="pdf",
+            filename="invoice.pdf"
+        )
 
-    print("✔ Email sent to Boss:", EMAIL_TO)
+    context = ssl.create_default_context()
+
+    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+        smtp.starttls(context=context)
+        smtp.login(EMAIL_USER, EMAIL_PASS)
+        smtp.send_message(msg)
+
+    print(f"📤 Email sent successfully to: {EMAIL_TO}")
