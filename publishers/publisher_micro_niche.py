@@ -1,4 +1,5 @@
-def publish_micro_niche_site(task):
-    print("🌐 Generating micro niche affiliate webpage...")
-
-    print("📤 Ready for Webflow/WordPress upload.")
+def publish_micro_niche():
+    print("🌐 Publishing micro-niche content... (mock)")
+    print("✨ Article prepared")
+    print("📤 Ready for upload")
+    print("✅ Micro niche article done.")
