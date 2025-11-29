@@ -2,20 +2,31 @@ import time
 import requests
 from settings import BACKEND_URL
 
-# Import all publishers
-from publishers.printify_publisher import publish_printify_product
-from publishers.payhip_publisher import publish_payhip_product
-from publishers.gumroad_publisher import publish_gumroad_product
-from publishers.meshy_publisher import publish_meshy_assets
-from publishers.affiliate_blog_publisher import publish_affiliate_blog
-from publishers.creative_market_publisher import publish_creative_market
-from publishers.stock_media_publisher import publish_stock_photos
-from publishers.kdp_publisher import publish_kdp_book
-from publishers.youtube_publisher import publish_youtube_script
-from publishers.micro_niche_publisher import publish_micro_niche_site
-from publishers.shopify_publisher import publish_shopify_item
-from publishers.course_publisher import publish_course_material
+from publishers.publisher_printify import publish_printify
+from publishers.publisher_payhip import publish_payhip
+from publishers.publisher_gumroad import publish_gumroad
+from publishers.publisher_meshy import publish_meshy
+from publishers.publisher_affiliate_blog import publish_affiliate_blog
+from publishers.publisher_creative_market import publish_creative_market
+from publishers.publisher_stock_media import publish_stock_media
+from publishers.publisher_kdp import publish_kdp
+from publishers.publisher_youtube import publish_youtube
+from publishers.publisher_micro_niche import publish_micro_niche
+from publishers.publisher_course import publish_course
 
+TASK_MAP = {
+    "printify_pod": publish_printify,
+    "payhip_upload": publish_payhip,
+    "gumroad_upload": publish_gumroad,
+    "meshy_assets": publish_meshy,
+    "affiliate_blog": publish_affiliate_blog,
+    "creative_market": publish_creative_market,
+    "stock_media": publish_stock_media,
+    "kdp_books": publish_kdp,
+    "youtube_automation": publish_youtube,
+    "micro_niche_sites": publish_micro_niche,
+    "course_automation": publish_course
+}
 
 def fetch_task():
     try:
