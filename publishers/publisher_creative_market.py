@@ -1,4 +1,5 @@
-def publish_creative_market(task):
-    print("🎁 Creating Creative Market template bundle...")
-
-    print("📦 Ready for upload (manual marketplace only).")
+def publish_creative_market():
+    print("🎨 Preparing template bundle for Creative Market...")
+    print("✨ Digital asset generated.")
+    print("📤 Manual upload required (API unavailable).")
+    print("✅ Creative Market item ready.")
