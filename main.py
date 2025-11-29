@@ -7,13 +7,11 @@ import time
 import uuid
 
 # ------------------------------
-# Routers (Daily Reports, Streams, Auth)
+# Import Routers (Daily Reports)
 # ------------------------------
-# If you add streams/auth later, just import here
 from routers.report_router import router as report_router
 
 app = FastAPI()
-
 
 # ------------------------------
 # In-memory task queue
@@ -30,7 +28,7 @@ class Task(BaseModel):
 
 
 # ------------------------------
-# 1️⃣ Create new task (used by JRAVIS-BRAIN)
+# 1️⃣ Create new task (used by JRAVIS Brain)
 # ------------------------------
 @app.post("/task/new")
 def create_task(task: Task):
@@ -70,7 +68,7 @@ def task_done(task_id: str):
 
 
 # ------------------------------
-# 4️⃣ View all tasks
+# 4️⃣ View all tasks (for debugging/reporting)
 # ------------------------------
 @app.get("/task/all")
 def view_all():
@@ -78,7 +76,7 @@ def view_all():
 
 
 # ------------------------------
-# 5️⃣ Health check (Render uses this)
+# 5️⃣ Health check (Used by Render)
 # ------------------------------
 @app.get("/healthz")
 def health_check():
@@ -86,6 +84,6 @@ def health_check():
 
 
 # ------------------------------
-# 6️⃣ Include Daily Report Router
+# 6️⃣ Include Daily/Weekly Report Routes
 # ------------------------------
 app.include_router(report_router, prefix="/report")
