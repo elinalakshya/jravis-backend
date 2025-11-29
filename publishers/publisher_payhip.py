@@ -1,8 +1,6 @@
-import requests
-from settings import PAYHIP_API_KEY, OPENAI_API_KEY
+from settings import PAYHIP_API_KEY
 
-def publish_payhip(task):
-    print("💾 Uploading to Payhip...")
-
-    product = "JRAVIS Digital Pack – Auto Generated"
-    print("📤 Upload simulated — API key ready.")
+def publish_payhip():
+    print("🛒 Publishing Payhip product... (mock)")
+    print("📦 File prepared.")
+    print("✅ Payhip upload complete.")
