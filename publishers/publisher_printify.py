@@ -1,8 +1,9 @@
 import requests
 from settings import PRINTIFY_API_KEY, OPENAI_API_KEY
 
-def publish_printify():
-    print("🖼 Publishing to Printify...")
+def publish_printify_product(task):
+    print("🖨 Publishing Printify POD item... (simulation only)")
+    print("✔ Printify ready for manual review.")
 
     headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
     body = {
