@@ -5,14 +5,10 @@ BACKEND_URL = "https://jravis-backend.onrender.com"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PRINTIFY_API_KEY = os.getenv("PRINTIFY_API_KEY")
 MESHY_API_KEY = os.getenv("MESHY_API_KEY")
-GUMROAD_TOKEN = os.getenv("GUMROAD_TOKEN")
 PAYHIP_API_KEY = os.getenv("PAYHIP_API_KEY")
+GUMROAD_ACCESS_TOKEN = os.getenv("GUMROAD_ACCESS_TOKEN")
 
-LOCK_CODE = "JRV2040_LOCKED_KEY_001"
-
-
-# Email settings
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587
-EMAIL_USER = "elinalakshya@gmail.com"
-EMAIL_PASS = "znkuyendmrrvhxwp"
+# future keys:
+SHOPIFY_API_KEY = os.getenv("SHOPIFY_API_KEY")
+WEBFLOW_TOKEN = os.getenv("WEBFLOW_TOKEN")
+WORDPRESS_TOKEN = os.getenv("WORDPRESS_TOKEN")
