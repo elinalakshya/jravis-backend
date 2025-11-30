@@ -7,7 +7,7 @@ import os
 # Ensure /src is in Python path
 # -------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SRC_DIR = os.path.join(BASE_DIR, "src")
+SRC_DIR = os.path.join(BASE.dirname(os.path.abspath(__file__)), "src")
 
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
@@ -20,7 +20,8 @@ from src.engines.shopify_engine import run_shopify_engine
 from src.engines.export_stationery_engine import run_stationery_engine
 from src.engines.gumroad_engine import run_gumroad_engine
 from src.engines.payhip_engine import run_payhip_engine
-from src.engines.webflow_template_engine import run_webflow_template_engine
+# Webflow temporarily disabled (API key arrives in 4 days)
+# from src.engines.webflow_template_engine import run_webflow_template_engine
 
 # -------------------------------------------------------------------
 # Logger setup
@@ -39,47 +40,44 @@ logger = logging.getLogger("JRAVIS-WORKER")
 def run_all_streams_once():
     logger.info("🔥 Starting Full Engine Cycle...")
 
-    # 1. Printify POD
+    # 1. Printify POD Engine
     try:
         run_printify_engine()
     except Exception as e:
         logger.error(f"❌ Printify Engine Error: {e}")
 
-    # 2. Shopify Digital Products
+    # 2. Shopify Digital Product Engine
     try:
         run_shopify_engine()
     except Exception as e:
         logger.error(f"❌ Shopify Engine Error: {e}")
 
-    # 3. Stationery Export (Shopify)
+    # 3. Stationery Export Engine
     try:
         run_stationery_engine()
     except Exception as e:
         logger.error(f"❌ Stationery Engine Error: {e}")
 
-    # 4. Gumroad Templates
+    # 4. Gumroad Engine
     try:
         run_gumroad_engine()
     except Exception as e:
         logger.error(f"❌ Gumroad Engine Error: {e}")
 
-    # 5. Payhip Templates
+    # 5. Payhip Engine
     try:
         run_payhip_engine()
     except Exception as e:
         logger.error(f"❌ Payhip Engine Error: {e}")
 
-    # 6. Webflow Templates (only works after API key arrives)
-    try:
-        run_webflow_template_engine()
-    except Exception as e:
-        logger.error(f"❌ Webflow Engine Error: {e}")
+    # 6. Webflow Engine (TEMPORARILY DISABLED)
+    logger.info("⏳ Webflow Template Engine: Idle (waiting for API key)")
 
     logger.info("✅ Engine Cycle Completed.")
 
 
 # -------------------------------------------------------------------
-# Worker main loop
+# Main Worker Loop
 # -------------------------------------------------------------------
 def start_worker():
     logger.info("💓 JRAVIS Worker Started...")
@@ -91,7 +89,7 @@ def start_worker():
 
 
 # -------------------------------------------------------------------
-# Start worker
+# Worker Entry Point
 # -------------------------------------------------------------------
 if __name__ == "__main__":
     start_worker()
