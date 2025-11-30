@@ -1,44 +1,50 @@
-# publishers/youtube_publisher.py
+# YouTube Publisher (Simulation Mode)
+# YouTube API upload requires OAuth screen + manual approval.
+# JRAVIS will generate script + thumbnail + upload-ready package.
 
 import os
+import uuid
+from settings import OUTPUT_FOLDER, SAFE_OUTPUT
 from openai import OpenAI
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-OUTPUT_FOLDER = os.getenv("OUTPUT_FOLDER", "generated")
+client = OpenAI()
 
-
-def publish_youtube_script(task):
+def publish_youtube_video(task):
     """
-    Creates a full YouTube script for faceless channels.
+    Generates a YouTube-ready script, thumbnail idea, and upload package.
+    Actual upload cannot be done automatically without OAuth consent.
     """
-    print("🎬 Creating YouTube script...")
 
-    try:
-        prompt = """
-        Write a full YouTube script (1300 words) for a viral short-video topic.
-        Include:
-        - Hook
-        - Narration
-        - Sections
-        - Facts
-        - Outro
-        """
+    print("🎬 Generating YouTube video package...")
 
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=prompt
-        )
-        script = response.output_text
+    # Ask AI for script + thumbnail idea
+    prompt = "Create an engaging YouTube short script and thumbnail idea about technology tips."
+    response = client.responses.create(model="gpt-4o-mini", input=prompt)
 
-        os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-        path = f"{OUTPUT_FOLDER}/youtube_script.txt"
+    script_text = response.output_text or "YouTube script not generated."
+    thumbnail_text = "Eye-catching thumbnail concept."
 
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(script)
+    # Output folder
+    out_dir = SAFE_OUTPUT("youtube")
+    os.makedirs(out_dir, exist_ok=True)
 
-        print("🎥 YouTube script generated.")
-        return "YouTube script ready"
+    file_id = str(uuid.uuid4())
+    script_path = os.path.join(out_dir, f"youtube_script_{file_id}.txt")
+    thumb_path  = os.path.join(out_dir, f"youtube_thumbnail_{file_id}.txt")
 
-    except Exception as e:
-        print("❌ YouTube Error:", e)
-        return "YouTube script failed"
+    with open(script_path, "w") as f:
+        f.write(script_text)
+
+    with open(thumb_path, "w") as f:
+        f.write(thumbnail_text)
+
+    print("🎥 YouTube content generated.")
+    print(f"📝 Script saved: {script_path}")
+    print(f"🖼 Thumbnail idea saved: {thumb_path}")
+
+    return {
+        "status": "ready_for_manual_upload",
+        "script": script_path,
+        "thumbnail": thumb_path,
+        "message": "YouTube auto-upload requires OAuth. JRAVIS has prepared upload-ready files."
+    }
