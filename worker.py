@@ -28,6 +28,7 @@ from src.engines.pod_engine import run_pod_engine
 from src.engines.multi_market_engine import run_multi_market_engine
 from src.engines.stock_engine import run_stock_engine
 from src.engines.course_resell_engine import run_course_resell_engine
+from src.engines.newsletter_content_engine import run_newsletter_content_engine
 # Webflow temporarily disabled until API key arrives
 # from src.engines.webflow_template_engine import run_webflow_template_engine
 
@@ -112,6 +113,11 @@ try:
     run_course_resell_engine()
 except Exception as e:
     logger.error(f"❌ Course Resell Engine Error: {e}")
+
+try:
+    run_newsletter_content_engine()
+except Exception as e:
+    logger.error(f"❌ Newsletter Content Engine Error: {e}")
 
     # Webflow disabled temporarily
     logger.info("⏳ Webflow Template Engine: Idle (waiting for API key)")
