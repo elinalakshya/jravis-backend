@@ -21,6 +21,8 @@ from src.engines.export_stationery_engine import run_stationery_engine
 from src.engines.gumroad_engine import run_gumroad_engine
 from src.engines.payhip_engine import run_payhip_engine
 from src.engines.newsletter_engine import run_newsletter_engine
+from src.engines.affiliate_funnel_engine import run_affiliate_funnel_engine
+
 
 
 # Webflow temporarily disabled until API key arrives
@@ -72,6 +74,11 @@ def run_all_streams_once():
     run_newsletter_engine()
 except Exception as e:
     logger.error(f"❌ Newsletter Engine Error: {e}")
+
+try:
+    run_affiliate_funnel_engine()
+except Exception as e:
+    logger.error(f"❌ Affiliate Funnel Error: {e}")
 
     # Webflow disabled temporarily
     logger.info("⏳ Webflow Template Engine: Idle (waiting for API key)")
