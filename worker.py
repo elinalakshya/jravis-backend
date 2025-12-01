@@ -18,7 +18,7 @@ logger = logging.getLogger("JRAVIS Worker")
 # OLD 6 STREAMS
 from src.engines.printify_engine import run_printify_engine
 from src.engines.shopify_engine import run_shopify_engine
-from src.engines.export_stationery_engine import run_export_stationery_engine
+from src.engines.export_stationery_engine import run_stationery_engine
 from src.engines.gumroad_engine import run_gumroad_engine
 from src.engines.payhip_engine import run_payhip_engine
 from src.engines.webflow_template_engine import run_webflow_template_engine
