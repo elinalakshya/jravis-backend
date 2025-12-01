@@ -57,7 +57,7 @@ def main():
     # -------- OLD 6 STREAMS --------
     safe_run("Printify POD Engine", run_printify_engine)
     safe_run("Shopify Digital Products Engine", run_shopify_engine)
-    safe_run("Stationery Export Engine", run_export_stationery_engine)
+    safe_run("Stationery Export Engine", run_stationery_engine)
     safe_run("Gumroad Templates Engine", run_gumroad_engine)
     safe_run("Payhip Templates Engine", run_payhip_engine)
     safe_run("Webflow Template Engine", run_webflow_template_engine)
