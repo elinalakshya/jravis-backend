@@ -24,6 +24,7 @@ from src.engines.newsletter_engine import run_newsletter_engine
 from src.engines.affiliate_funnel_engine import run_affiliate_funnel_engine
 from src.engines.auto_blogging_engine import run_auto_blogging_engine
 from src.engines.template_engine import run_template_engine
+from src.engines.pod_engine import run_pod_engine
 # Webflow temporarily disabled until API key arrives
 # from src.engines.webflow_template_engine import run_webflow_template_engine
 
@@ -88,6 +89,11 @@ try:
     run_template_engine()
 except Exception as e:
     logger.error(f"❌ Template Engine Error: {e}")
+
+try:
+    run_pod_engine()
+except Exception as e:
+    logger.error(f"❌ POD Engine Error: {e}")
 
     # Webflow disabled temporarily
     logger.info("⏳ Webflow Template Engine: Idle (waiting for API key)")
