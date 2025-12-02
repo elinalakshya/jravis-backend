@@ -7,12 +7,15 @@ import traceback
 # ==========================================================
 try:
     from jravis_config import JRAVIS_BRAIN
-    print("🧠 JRAVIS_BRAIN loaded successfully.")
-except Exception as e:
-    JRAVIS_BRAIN = {}
-    print("⚠ WARNING: JRAVIS_BRAIN could not be loaded. Running in SAFE MODE.")
-    print(e)
+ import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+try:
+    from jravis_config import JRAVIS_BRAIN
+    print("🧠 JRAVIS_BRAIN loaded successfully.")
+except:
+    JRAVIS_BRAIN = {}
+    print("⚠ Could not load JRAVIS_BRAIN — SAFE MODE enabled.")
 
 # ==========================================================
 # LOGGING SETUP
@@ -139,7 +142,6 @@ def main():
 
     logger.info("✨ ALL ENGINES COMPLETED — Worker sleeping for 10 minutes...")
     time.sleep(600)
-
 
 # ==========================================================
 # ENTRY POINT
