@@ -1,27 +1,25 @@
 import logging
 import time
 import traceback
-
-# ==========================================================
-# LOAD JRAVIS BRAIN SAFELY
-# ==========================================================
 import sys
 import os
 
-try:
-    # Add parent directory to Python path
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    sys.path.append(BASE_DIR)
+# ==========================================================
+# BOOTSTRAP PATHS & CONFIG
+# ==========================================================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(BASE_DIR)
 
+try:
     from src.jravis_config import JRAVIS_BRAIN
     print("🧠 JRAVIS_BRAIN loaded successfully.")
 except Exception as e:
     JRAVIS_BRAIN = {}
-    print("⚠ WARNING: Failed to load JRAVIS_BRAIN — running in SAFE MODE.")
+    print("⚠ WARNING: JRAVIS_BRAIN failed to load — running SAFE MODE.")
     print("Error:", e)
 
 # ==========================================================
-# LOGGING SETUP
+# LOGGING
 # ==========================================================
 logging.basicConfig(
     level=logging.INFO,
@@ -31,33 +29,58 @@ logger = logging.getLogger("JRAVIS Worker")
 
 
 # ==========================================================
-# SAFE IMPORT WRAPPER
+# SAFE ENGINE IMPORT
 # ==========================================================
-def try_import(path, func):
-    """
-    Safely imports engines. Returns None if missing.
-    """
+def try_import(module_path, function_name):
     try:
-        module = __import__(path, fromlist=[func])
-        return getattr(module, func)
+        module = __import__(module_path, fromlist=[function_name])
+        return getattr(module, function_name)
     except Exception as e:
-        logger.error(f"❌ Failed to load {func} from {path}: {e}")
+        logger.error(f"❌ Failed to import {function_name} from {module_path}: {e}")
         return None
 
 
 # ==========================================================
-# ENGINE IMPORTS (All 14 Streams)
+# OPENAI HELPER SHARED BY ALL ENGINES
 # ==========================================================
+from openai import OpenAI
+client = OpenAI()
 
+def ask_openai(system_prompt, user_prompt):
+    """
+    Unified helper for ALL engines.
+    Safely handles new OpenAI API formats.
+    """
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+        return response.choices[0].message.content
+
+    except Exception as e:
+        logger.error(f"❌ OpenAI Engine Error: {e}")
+        return f"JRAVIS_ERROR: {e}"
+
+
+# Expose helper at global level so every engine can use it
+globals()["ask_openai"] = ask_openai
+
+
+# ==========================================================
+# ENGINE MAP (ALL 14 STREAMS)
+# ==========================================================
 ENGINE_MAP = {
-    # OLD 6 STREAMS
-    "Printify POD Engine":
+    "Printify POD Engine": 
         try_import("src.engines.printify_engine", "run_printify_engine"),
 
-    "Shopify Digital Products Engine":
+    "Shopify Digital Products Engine": 
         try_import("src.engines.shopify_engine", "run_shopify_engine"),
 
-    "Stationery Export Engine":
+    "Stationery Export Engine": 
         try_import("src.engines.export_stationery_engine", "run_stationery_engine"),
 
     "Gumroad Templates Engine":
@@ -66,11 +89,6 @@ ENGINE_MAP = {
     "Payhip Templates Engine":
         try_import("src.engines.payhip_engine", "run_payhip_engine"),
 
-    # Webflow disabled until API is active
-    # "Webflow Template Engine":
-    #     try_import("src.engines.webflow_template_engine", "run_webflow_template_engine"),
-
-    # NEW 8 AUTOMATED STREAMS
     "Auto Blogging Engine":
         try_import("src.engines.auto_blogging_engine", "run_auto_blogging_engine"),
 
@@ -98,19 +116,19 @@ ENGINE_MAP = {
 
 
 # ==========================================================
-# SAFETY RUNNER (Prevents CRASH)
+# SAFE ENGINE EXECUTION WRAPPER
 # ==========================================================
-def safe_run(title, func):
-    if func is None:
-        logger.warning(f"⚠ Skipping {title} — engine missing or inactive.")
+def safe_run(name, engine):
+    if engine is None:
+        logger.warning(f"⚠ Skipping {name} — Engine missing.")
         return
 
     try:
-        logger.info(f"🟦 Running → {title}")
-        func()
-        logger.info(f"✅ Completed → {title}")
+        logger.info(f"🔵 Running {name} ...")
+        engine()
+        logger.info(f"✅ Completed {name}")
     except Exception as e:
-        logger.error(f"❌ ERROR in {title}: {e}")
+        logger.error(f"❌ ERROR in {name}: {e}")
         traceback.print_exc()
 
 
@@ -118,36 +136,31 @@ def safe_run(title, func):
 # APPLY JRAVIS BRAIN RULES
 # ==========================================================
 def enforce_brain():
-    logger.info("🧠 Enforcing JRAVIS_BRAIN rules...")
+    logger.info("🧠 Applying JRAVIS_BRAIN rules...")
 
-    # DEBUG PRINT: Show what value is actually in the config
     owner = JRAVIS_BRAIN.get("identity", {}).get("owner")
-    logger.info(f"🔍 DEBUG — JRAVIS_BRAIN identity.owner = {owner}")
+    logger.info(f"Identity check → owner = {owner}")
 
     if owner != "Boss":
-        logger.warning("⚠ Brain owner mismatch — switching to restricted SAFE MODE.")
-
-    # Additional rules can be activated here:
-    # - monthly target enforcement
-    # - priority stream selection
-    # - legal/ethical filters
-    # - automation mode
+        logger.warning("⚠ Unauthorized brain owner detected — SAFE MODE.")
 
 
 # ==========================================================
-# MAIN LOOP
+# MAIN EXECUTION LOOP
 # ==========================================================
 def main():
     logger.info("💓 JRAVIS Worker Started...")
     enforce_brain()
-    logger.info("🔥 Running Full 14-Engine Cycle...")
+
+    logger.info("🚀 Running Full 14-Engine Automation Cycle...")
 
     for name, engine in ENGINE_MAP.items():
         safe_run(name, engine)
-        time.sleep(1)  # safety delay
+        time.sleep(1)
 
-    logger.info("✨ ALL ENGINES COMPLETED — Worker sleeping for 10 minutes...")
+    logger.info("🌙 Cycle complete — Sleeping 10 minutes...")
     time.sleep(600)
+
 
 # ==========================================================
 # ENTRY POINT
