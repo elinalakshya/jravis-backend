@@ -1,55 +1,59 @@
 import logging
-from openai import OpenAI
-from publishers.template_machine_publisher import save_template_pack
+from src.engines.openai_helper import ask_openai
 
 logger = logging.getLogger("TemplateMachineEngine")
-client = OpenAI()
-
-def generate_template_pack():
-    """
-    Generate a full template pack in JSON:
-    - Title
-    - 3–5 templates (filename : content)
-    """
-    prompt = """
-    Create a pack of useful digital templates.
-    Include:
-    - A short title
-    - 4 templates (business, notion, planner, resume)
-    Format as:
-    {
-        "title": "...",
-        "files": {
-            "business_template.txt": "...",
-            "notion_template.txt": "...",
-            "planner.txt": "...",
-            "resume_template.txt": "..."
-        }
-    }
-    """
-
-    r = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        response_format={"type": "json_object"}
-    )
-
-    return r.choices[0].message["content"]
 
 
 def run_template_machine_engine():
-    logger.info("📝 Template Machine Engine Running...")
+    logger.info("🟦 Running Template Machine Engine...")
 
     try:
-        import json
-        data = json.loads(generate_template_pack())
-
-        save_template_pack(
-            data["title"],
-            data["files"]
+        # Prompts
+        system_prompt = (
+            "You are JRAVIS, a template machine generator. "
+            "Output must include editable blocks and clear structure."
         )
 
-        logger.info("✅ Template Machine Pack Generated")
+        user_prompt = """
+        Generate a multi-section template package:
+        - Title
+        - Editable blocks (in HTML)
+        - Notes for customization
+        - Instructions
+        Produce a clean HTML file suitable for digital marketplaces.
+        """
+
+        html = ask_openai(system_prompt, user_prompt)
+
+        if "JRAVIS_ERROR" in html:
+            logger.error("❌ Template Machine generation failed.")
+            return
+
+        # File storage
+        file_data = {
+            "filename": "template_machine.html",
+            "content": html,
+            "type": "html"
+        }
+
+        output = {
+            "engine": "template_machines",
+            "status": "success",
+            "title": "Template Machine Output",
+            "description": "JRAVIS-generated editable digital template.",
+            "html": html,
+            "text": None,
+            "keywords": ["template", "digital", "machine"],
+            "files": [file_data],
+            "metadata": {
+                "category": "templates",
+                "platform": "universal",
+                "price": "5 - 20 USD"
+            }
+        }
+
+        logger.info("✅ Template Machine Template Created Successfully")
+        return output
 
     except Exception as e:
         logger.error(f"❌ Template Machine Engine Error: {e}")
