@@ -118,19 +118,24 @@ ENGINE_MAP = {
 # ==========================================================
 # SAFE ENGINE EXECUTION WRAPPER
 # ==========================================================
-def safe_run(name, engine):
-    if engine is None:
-        logger.warning(f"⚠ Skipping {name} — Engine missing.")
-        return
+except Exception as e:
+    logger.error(f"❌ ERROR in {title}: {e}")
 
+    # SEND ERROR TO N8N
+    import requests
     try:
-        logger.info(f"🔵 Running {name} ...")
-        engine()
-        logger.info(f"✅ Completed {name}")
-    except Exception as e:
-        logger.error(f"❌ ERROR in {name}: {e}")
-        traceback.print_exc()
-
+        requests.post(
+            "https://lakshyaglobal.app.n8n.cloud/webhook/jravis_error_alert",
+            json={
+                "engine": title,
+                "error": str(e),
+                "stacktrace": traceback.format_exc()
+            },
+            timeout=5
+        )
+        logger.info("📨 Sent error to n8n alert workflow.")
+    except Exception as alert_error:
+        logger.error(f"⚠ Failed to send error alert: {alert_error}")
 
 # ==========================================================
 # APPLY JRAVIS BRAIN RULES
@@ -160,7 +165,6 @@ def main():
 
     logger.info("🌙 Cycle complete — Sleeping 10 minutes...")
     time.sleep(600)
-
 
 # ==========================================================
 # ENTRY POINT
