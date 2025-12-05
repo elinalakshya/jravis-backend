@@ -68,6 +68,10 @@ def run_all_streams():
         ("shopify", run_shopify_engine, publish_shopify),
         ("template_machine", run_template_machine_engine, publish_template_machine),
     ]
+    
+def write_log(text):
+    with open("/opt/render/project/src/worker.log", "a") as f:
+        f.write(text + "\n")
 
     # EXECUTE PIPELINES
     for stream_name, engine_fn, publisher_fn in pipelines:
