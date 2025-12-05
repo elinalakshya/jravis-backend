@@ -1,31 +1,14 @@
-import logging
-from src.engines.openai_helper import ask_openai
-from publishers.gumroad_publisher import save_gumroad_product
+import os
 
-logger = logging.getLogger("GumroadEngine")
+OUTPUT_DIR = "output/gumroad"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-def run_gumroad_engine():
-    logger.info("🟦 Running Gumroad Template Engine...")
+def save_gumroad_product(title: str, html: str):
+    """Save Gumroad product as HTML file."""
+    safe_title = title.replace(" ", "_").replace("/", "_")
+    filepath = os.path.join(OUTPUT_DIR, f"{safe_title}.html")
 
-    system_prompt = """
-    You are JRAVIS — expert digital product creator.
-    Create a HIGH-DEMAND Gumroad template.
-    Output sections:
-    - Title
-    - Description
-    - Features list
-    - What's included
-    - Ideal audience
-    - Licensing terms
-    """
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(html)
 
-    user_prompt = "Generate a premium digital template for Gumroad. Keep it unique and legal."
-
-    try:
-        content = ask_openai(system_prompt, user_prompt)
-
-        save_gumroad_product(content)
-
-        logger.info("✅ Gumroad product spec generated.")
-    except Exception as e:
-        logger.error(f"❌ Gumroad Engine Error: {e}")
+    return filepath
