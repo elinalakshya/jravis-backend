@@ -1,46 +1,53 @@
 import os
-import logging
+import datetime
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 
-logger = logging.getLogger("GumroadPublisher")
+MASTER_FOLDER = "12mvSBr6Z-tAUQgwIO2LBZegP20eGAYh9"
 
-OUTPUT_DIR = "output/gumroad_products"
+def get_drive():
+    gauth = GoogleAuth()
+    gauth.LocalWebserverAuth()
+    return GoogleDrive(gauth)
 
+def ensure_folder(drive, parent_id, name):
+    query = f"'{parent_id}' in parents and trashed=false and mimeType='application/vnd.google-apps.folder' and title='{name}'"
+    file_list = drive.ListFile({'q': query}).GetList()
+    if file_list:
+        return file_list[0]['id']
 
-def ensure_output_dir():
-    """Creates the folder if it doesn't exist."""
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
+    folder = drive.CreateFile({
+        'title': name,
+        'mimeType': 'application/vnd.google-apps.folder',
+        'parents': [{'id': parent_id}]
+    })
+    folder.Upload()
+    return folder['id']
 
+def save_gumroad_product(title, html_content):
+    drive = get_drive()
 
-def slugify(text):
-    """Converts product title into a safe filename."""
-    return (
-        text.lower()
-        .replace(" ", "_")
-        .replace("/", "_")
-        .replace("\\", "_")
-        .replace("-", "_")
-        .strip()
-    )
+    today = datetime.datetime.now()
+    month_name = today.strftime("%B %Y")  # Example: December 2025
 
+    # level-1 year folder
+    month_folder = ensure_folder(drive, MASTER_FOLDER, month_name)
 
-def save_gumroad_product(title: str, html_content: str):
-    """
-    Saves generated Gumroad product HTML into /output/gumroad_products/.
-    This is the function JRAVIS worker imports.
-    """
-    ensure_output_dir()
+    # stream-specific folder
+    stream_folder = ensure_folder(drive, month_folder, "gumroad")
 
-    filename = f"{slugify(title)}.html"
-    path = os.path.join(OUTPUT_DIR, filename)
+    filename = f"{title}.html"
+    file_path = f"/tmp/{filename}"
 
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(html_content)
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
 
-        logger.info(f"📦 Gumroad product saved → {path}")
-        return path
+    gfile = drive.CreateFile({
+        'title': filename,
+        'parents': [{'id': stream_folder}]
+    })
 
-    except Exception as e:
-        logger.error(f"❌ Failed to save Gumroad product: {e}")
-        raise
+    gfile.SetContentFile(file_path)
+    gfile.Upload()
+
+    return gfile['id']
