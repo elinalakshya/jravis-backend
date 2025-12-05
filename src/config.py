@@ -1,9 +1,11 @@
-# src/config.py
-import os
+class Settings(BaseSettings):
+    PROJECT_NAME: str = "JRAVIS Backend"
+    VERSION: str = "1.0.0"
 
-class Settings:
-    PROJECT_NAME = "JRAVIS Backend API"
-    VERSION = "1.0.0"
-    API_KEY = os.getenv("JRAVIS_API_KEY", "JRV_DEFAULT_KEY")
+    OPENAI_API_KEY: str
 
-settings = Settings()
+    # Add this 👇 new line
+    N8N_WEBHOOK_SECRET: str = ""
+
+    class Config:
+        env_file = ".env"
