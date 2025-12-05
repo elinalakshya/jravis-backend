@@ -1,73 +1,28 @@
-# -----------------------------------------------------------
-# Batch 9 — Auto-Scaling Template & Funnel Factory Router
-# -----------------------------------------------------------
-
 from fastapi import APIRouter
-from pydantic import BaseModel
-import random
-import time
+from src.factory.zip_factory import (
+    generate_template_package,
+    scale_template,
+    list_assets
+)
 
 router = APIRouter(prefix="/factory", tags=["Factory"])
 
 
-# ------------------------------------------------------
-# Data Models
-# ------------------------------------------------------
-class TemplateRequest(BaseModel):
-    market: str
-    niche: str
-    target: str
+@router.post("/generate")
+def generate():
+    """Generate a brand-new template ZIP."""
+    return generate_template_package()
 
 
-class TemplateResponse(BaseModel):
-    template_id: str
-    title: str
-    description: str
-    funnel_url: str
-    predicted_sales_per_month: float
-    created_at: float
+@router.post("/scale")
+def scale(data: dict):
+    """Scale a template into multiple variants."""
+    base = data.get("base")
+    count = int(data.get("count", 3))
+    return scale_template(base, count)
 
 
-# ------------------------------------------------------
-# Generate Template / Funnel
-# ------------------------------------------------------
-@router.post("/generate", response_model=TemplateResponse)
-def generate_factory_template(data: TemplateRequest):
-    """JRAVIS Batch 9 — Creates auto-scaling templates & funnels."""
-
-    template_id = f"TEMP-{random.randint(10000,99999)}"
-
-    title = f"{data.market} - {data.niche} Funnel for {data.target}"
-    description = (
-        f"An optimized funnel designed for {data.target} in the {data.market} / {data.niche} segment. "
-        "Auto-generated using JRAVIS Batch-9 scaling engine."
-    )
-
-    predicted_sales = round(random.uniform(12000, 75000), 2)
-
-    return TemplateResponse(
-        template_id=template_id,
-        title=title,
-        description=description,
-        funnel_url=f"https://jravis.ai/funnels/{template_id}",
-        predicted_sales_per_month=predicted_sales,
-        created_at=time.time()
-    )
-
-
-# ------------------------------------------------------
-# Fetch All Suggested Scaling Niches
-# ------------------------------------------------------
-@router.get("/niches")
-def get_niches():
-    niches = [
-        "AI Tools",
-        "Finance Automation",
-        "Digital Downloads",
-        "POD Niches",
-        "Real Estate Funnels",
-        "Affiliate Funnels",
-        "Coaching Funnels",
-        "Business Automation Kits",
-    ]
-    return {"niches": niches}
+@router.get("/list")
+def list_all():
+    """List all generated ZIP templates."""
+    return list_assets()
