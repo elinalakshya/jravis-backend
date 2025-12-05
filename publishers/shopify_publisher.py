@@ -1,49 +1,13 @@
 import os
-import datetime
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
 
-MASTER_FOLDER = "12mvSBr6Z-tAUQgwIO2LBZegP20eGAYh9"
+OUTPUT_DIR = "output/shopify_products"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-def get_drive():
-    gauth = GoogleAuth()
-    gauth.LocalWebserverAuth()
-    return GoogleDrive(gauth)
+def save_shopify_product(title: str, html: str):
+    safe_title = title.replace(" ", "_").replace("/", "_")
+    filepath = os.path.join(OUTPUT_DIR, f"{safe_title}.html")
 
-def ensure_folder(drive, parent_id, name):
-    query = f"'{parent_id}' in parents and trashed=false and mimeType='application/vnd.google-apps.folder' and title='{name}'"
-    results = drive.ListFile({'q': query}).GetList()
-    if results:
-        return results[0]['id']
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(html)
 
-    folder = drive.CreateFile({
-        'title': name,
-        'mimeType': 'application/vnd.google-apps.folder',
-        'parents': [{'id': parent_id}]
-    })
-    folder.Upload()
-    return folder['id']
-
-def save_shopify_product(title, product_data):
-    drive = get_drive()
-
-    today = datetime.datetime.now()
-    month_name = today.strftime("%B %Y")
-
-    month_folder = ensure_folder(drive, MASTER_FOLDER, month_name)
-    stream_folder = ensure_folder(drive, month_folder, "shopify")
-
-    filename = f"{title}.json"
-    file_path = f"/tmp/{filename}"
-
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(product_data)
-
-    gfile = drive.CreateFile({
-        'title': filename,
-        'parents': [{'id': stream_folder}]
-    })
-    gfile.SetContentFile(file_path)
-    gfile.Upload()
-
-    return gfile['id']
+    return filepath
