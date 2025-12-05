@@ -1,45 +1,49 @@
-# publishers/shopify_publisher.py
-
 import os
-from openai import OpenAI
+import datetime
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-OUTPUT_FOLDER = os.getenv("OUTPUT_FOLDER", "generated")
+MASTER_FOLDER = "12mvSBr6Z-tAUQgwIO2LBZegP20eGAYh9"
 
+def get_drive():
+    gauth = GoogleAuth()
+    gauth.LocalWebserverAuth()
+    return GoogleDrive(gauth)
 
-def publish_shopify_product(task):
-    """
-    Creates product description + mock product content for Shopify.
-    Manual upload needed (no API used).
-    """
-    print("🛒 Generating Shopify product listing...")
+def ensure_folder(drive, parent_id, name):
+    query = f"'{parent_id}' in parents and trashed=false and mimeType='application/vnd.google-apps.folder' and title='{name}'"
+    results = drive.ListFile({'q': query}).GetList()
+    if results:
+        return results[0]['id']
 
-    try:
-        prompt = """
-        Write a Shopify digital product listing:
-        - Title
-        - Long description
-        - Highlights
-        - What’s included
-        - How to use
-        - Refund policy
-        """
+    folder = drive.CreateFile({
+        'title': name,
+        'mimeType': 'application/vnd.google-apps.folder',
+        'parents': [{'id': parent_id}]
+    })
+    folder.Upload()
+    return folder['id']
 
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=prompt
-        )
-        desc = response.output_text
+def save_shopify_product(title, product_data):
+    drive = get_drive()
 
-        os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-        path = f"{OUTPUT_FOLDER}/shopify_product.txt"
+    today = datetime.datetime.now()
+    month_name = today.strftime("%B %Y")
 
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(desc)
+    month_folder = ensure_folder(drive, MASTER_FOLDER, month_name)
+    stream_folder = ensure_folder(drive, month_folder, "shopify")
 
-        print("🛍 Shopify product generated.")
-        return "Shopify product generated"
+    filename = f"{title}.json"
+    file_path = f"/tmp/{filename}"
 
-    except Exception as e:
-        print("❌ Shopify Error:", e)
-        return "Shopify generation failed"
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(product_data)
+
+    gfile = drive.CreateFile({
+        'title': filename,
+        'parents': [{'id': stream_folder}]
+    })
+    gfile.SetContentFile(file_path)
+    gfile.Upload()
+
+    return gfile['id']
