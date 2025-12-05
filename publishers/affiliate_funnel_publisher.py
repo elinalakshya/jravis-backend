@@ -1,24 +1,49 @@
 import os
-import logging
+import datetime
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 
-logger = logging.getLogger("AffiliateFunnelPublisher")
+MASTER_FOLDER = "12mvSBr6Z-tAUQgwIO2LBZegP20eGAYh9"
 
-OUTPUT = "output/affiliate_funnels"
-os.makedirs(OUTPUT, exist_ok=True)
+def get_drive():
+    gauth = GoogleAuth()
+    gauth.LocalWebserverAuth()
+    return GoogleDrive(gauth)
 
+def ensure_folder(drive, parent_id, name):
+    query = f"'{parent_id}' in parents and trashed=false and mimeType='application/vnd.google-apps.folder' and title='{name}'"
+    results = drive.ListFile({'q': query}).GetList()
+    if results:
+        return results[0]['id']
+
+    folder = drive.CreateFile({
+        'title': name,
+        'mimeType': 'application/vnd.google-apps.folder',
+        'parents': [{'id': parent_id}]
+    })
+    folder.Upload()
+    return folder['id']
 
 def save_funnel_page(title, html_content):
-    """Saves the affiliate funnel HTML to output folder."""
-    file_name = title.replace(" ", "_").replace("/", "_") + ".html"
-    file_path = os.path.join(OUTPUT, file_name)
+    drive = get_drive()
 
-    try:
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(html_content)
+    today = datetime.datetime.now()
+    month_name = today.strftime("%B %Y")
 
-        logger.info(f"📄 Funnel Page Saved: {file_path}")
-        return file_path
+    month_folder = ensure_folder(drive, MASTER_FOLDER, month_name)
+    stream_folder = ensure_folder(drive, month_folder, "funnels")
 
-    except Exception as e:
-        logger.error(f"❌ Error saving funnel page: {e}")
-        return None
+    filename = f"{title}.html"
+    file_path = f"/tmp/{filename}"
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    gfile = drive.CreateFile({
+        'title': filename,
+        'parents': [{'id': stream_folder}]
+    })
+    gfile.SetContentFile(file_path)
+    gfile.Upload()
+
+    return gfile['id']
