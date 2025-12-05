@@ -1,6 +1,7 @@
 # -----------------------------------------------------------
 # JRAVIS BACKEND — MASTER FASTAPI ROUTER
-# Batch 6 Ready: Intelligence + Realtime + Streams
+# Mission 2040 Engine • Batch 6 Ready
+# Includes: Health • Auth • Streams • Realtime • Intelligence
 # -----------------------------------------------------------
 
 from fastapi import FastAPI, Request
@@ -10,7 +11,8 @@ from src.config import settings
 
 # Core routers
 from src.router_health import router as health_router
-from src.router_auth import router as auth_router
+from src.router_auth import router as auth_router        # Legacy auth (kept for compatibility)
+from src.router_auth_secure import router as secure_auth_router  # NEW Batch 7 secure auth
 from src.router_streams import router as streams_router
 
 # Realtime dashboard API
@@ -46,17 +48,20 @@ async def block_old_ip(request: Request, call_next):
 # ------------------------------------------------------
 # 3️⃣ Register All Routers
 # ------------------------------------------------------
-# System Health + Auth
+# Health + Legacy Auth (still used by worker v1)
 app.include_router(health_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 
-# Worker Streams API
+# NEW Batch-7 Secure Auth (Password + PIN + Lock Code)
+app.include_router(secure_auth_router, prefix="/api")
+
+# Worker Streams API (Gumroad, Payhip, Blog, Shopify, etc.)
 app.include_router(streams_router, prefix="/api")
 
-# Realtime Dashboard API
+# Realtime Dashboard API (Income, logs, state)
 app.include_router(realtime_api_router, prefix="/api")
 
-# Batch-6 Intelligence API
+# Intelligence API (Batch-6 AI brain)
 app.include_router(intelligence_router, prefix="/api")
 
 
