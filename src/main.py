@@ -19,3 +19,7 @@ app.include_router(streams_router, prefix="/api")
 @app.get("/")
 def root():
     return {"message": "JRAVIS Backend API Active"}
+    
+@app.get("/healthz")
+def render_healthcheck():
+    return {"status": "ok"}
