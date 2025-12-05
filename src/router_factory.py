@@ -1,104 +1,73 @@
 # -----------------------------------------------------------
-# JRAVIS BACKEND — MASTER FASTAPI ROUTER
-# Mission 2040 Engine — Batches 1 to 9 Activated
+# Batch 9 — Auto-Scaling Template & Funnel Factory Router
 # -----------------------------------------------------------
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter
+from pydantic import BaseModel
+import random
+import time
 
-from src.config import settings
-
-# Core routers
-from src.router_health import router as health_router
-from src.router_auth import router as auth_router
-from src.router_streams import router as streams_router
-
-# Realtime Dashboard API
-from src.api_routes import router as realtime_api_router
-
-# Intelligence API (Batch 6)
-from src.router_intelligence import router as intelligence_router
-
-# Factory API (Batch 9)
-from src.router_factory import router as factory_router
+router = APIRouter(prefix="/factory", tags=["Factory"])
 
 
 # ------------------------------------------------------
-# 1️⃣ FastAPI App Init
+# Data Models
 # ------------------------------------------------------
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    description="JRAVIS Backend API — Mission 2040 Engine",
-)
+class TemplateRequest(BaseModel):
+    market: str
+    niche: str
+    target: str
 
 
-# ------------------------------------------------------
-# 2️⃣ Block Legacy Worker IP
-# ------------------------------------------------------
-BLOCKED_IP = "74.220.48.249"
-
-@app.middleware("http")
-async def block_old_ip(request: Request, call_next):
-    client_ip = request.client.host
-    if client_ip == BLOCKED_IP:
-        return JSONResponse({"error": "Forbidden"}, status_code=403)
-    return await call_next(request)
+class TemplateResponse(BaseModel):
+    template_id: str
+    title: str
+    description: str
+    funnel_url: str
+    predicted_sales_per_month: float
+    created_at: float
 
 
 # ------------------------------------------------------
-# 3️⃣ Register All Routers
+# Generate Template / Funnel
 # ------------------------------------------------------
-# System
-app.include_router(health_router, prefix="/api")
-app.include_router(auth_router, prefix="/api")
+@router.post("/generate", response_model=TemplateResponse)
+def generate_factory_template(data: TemplateRequest):
+    """JRAVIS Batch 9 — Creates auto-scaling templates & funnels."""
 
-# Worker / Phase 1 Streams
-app.include_router(streams_router, prefix="/api")
+    template_id = f"TEMP-{random.randint(10000,99999)}"
 
-# Realtime Dashboard
-app.include_router(realtime_api_router, prefix="/api")
+    title = f"{data.market} - {data.niche} Funnel for {data.target}"
+    description = (
+        f"An optimized funnel designed for {data.target} in the {data.market} / {data.niche} segment. "
+        "Auto-generated using JRAVIS Batch-9 scaling engine."
+    )
 
-# Batch 6 — Intelligence (Market Pulse, Insights, etc.)
-app.include_router(intelligence_router, prefix="/api")
+    predicted_sales = round(random.uniform(12000, 75000), 2)
 
-# Batch 9 — Auto-Scaling Templates & Funnels Factory
-app.include_router(factory_router, prefix="/api")
-
-
-# ------------------------------------------------------
-# 4️⃣ N8N Webhook Handler (Batch 8 Sync)
-# ------------------------------------------------------
-@app.post("/n8n/sync")
-async def n8n_sync_handler(request: Request):
-    """
-    JRAVIS will accept pushes from N8N on this endpoint.
-    N8N_WEBHOOK_SECRET ensures no one else can push.
-    """
-    body = await request.json()
-    incoming_secret = body.get("secret")
-
-    if incoming_secret != settings.N8N_WEBHOOK_SECRET:
-        return JSONResponse({"error": "Invalid secret"}, status_code=401)
-
-    return {"status": "ok", "received": body}
+    return TemplateResponse(
+        template_id=template_id,
+        title=title,
+        description=description,
+        funnel_url=f"https://jravis.ai/funnels/{template_id}",
+        predicted_sales_per_month=predicted_sales,
+        created_at=time.time()
+    )
 
 
 # ------------------------------------------------------
-# 5️⃣ Root Endpoint
+# Fetch All Suggested Scaling Niches
 # ------------------------------------------------------
-@app.get("/")
-def root():
-    return {
-        "message": "JRAVIS Backend API Active",
-        "version": settings.VERSION,
-        "mission": "Mission 2040: Passive Global Automation"
-    }
-
-
-# ------------------------------------------------------
-# 6️⃣ Render Health Check
-# ------------------------------------------------------
-@app.get("/healthz")
-def render_health():
-    return {"status": "ok"}
+@router.get("/niches")
+def get_niches():
+    niches = [
+        "AI Tools",
+        "Finance Automation",
+        "Digital Downloads",
+        "POD Niches",
+        "Real Estate Funnels",
+        "Affiliate Funnels",
+        "Coaching Funnels",
+        "Business Automation Kits",
+    ]
+    return {"niches": niches}
