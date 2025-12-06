@@ -4,11 +4,25 @@
 # -----------------------------------------------------------
 
 import os
+import sys
 import time
 import random
 import requests
 
-from src.unified_engine import run_all_streams_micro_engine
+# -----------------------------------------------------------
+# FIX PYTHONPATH SO WORKER CAN SEE unified_engine.py
+# (located in jravis-worker/src/)
+# -----------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENGINE_PATH = os.path.join(BASE_DIR, "jravis-worker", "src")
+
+if ENGINE_PATH not in sys.path:
+    sys.path.append(ENGINE_PATH)
+    print("🔧 ENGINE PATH ENABLED →", ENGINE_PATH)
+
+# Now we can import normally
+from unified_engine import run_all_streams_micro_engine
+
 
 BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
 
@@ -70,48 +84,40 @@ def evaluate_growth(template_name):
 
 
 # ------------------------------------------------------
-# MAIN WORKER LOOP
+# MAIN CYCLE
 # ------------------------------------------------------
 def run_cycle():
     print("----------------------------------------")
     print("🔥 Running 1 full cycle...")
     print("----------------------------------------")
 
-    # -----------------------------
-    # 1. Generate Base Template
-    # -----------------------------
+    # 1. Generate template
     template = generate_template()
     if not template or "name" not in template:
-        print("❌ Template generation failed — skipping this cycle")
+        print("❌ Template generation failed — skipping")
         return
 
     base_name = template["name"]
     zip_path = template.get("zip")
 
-    # -----------------------------
-    # 2. Growth Scoring
-    # -----------------------------
+    # 2. Evaluate performance
     growth = evaluate_growth(base_name)
 
-    # -----------------------------
-    # 3. Scaling
-    # -----------------------------
+    # 3. Scale depending on performance
     if growth and growth.get("winner"):
         print("[Growth] WINNER → Scaling aggressively!")
         scale_template(base_name)
-        scale_template(base_name)  # double-scale winners
+        scale_template(base_name)
     else:
         print("[Growth] Normal scaling...")
         scale_template(base_name)
 
-    # -----------------------------
-    # 4. Run Monetization Pipeline
-    # -----------------------------
+    # 4. Monetization
     if zip_path:
         print("\n💰 Triggering Monetization Engine...")
         run_all_streams_micro_engine(zip_path, base_name)
     else:
-        print("⚠️ No ZIP found — skipping monetization")
+        print("⚠️ No ZIP found — Skipping monetization")
 
 
 # ------------------------------------------------------
@@ -123,10 +129,10 @@ def main():
     while True:
         run_cycle()
 
-        # Heartbeat cycle (10 minutes)
+        # 10-minute heartbeat (100 sec × 6)
         for i in range(6):
             print(f"💓 Heartbeat... ({i+1}/6)")
-            time.sleep(100)  # 100 sec × 6 = 600 sec ≈ 10 min
+            time.sleep(100)
 
 
 if __name__ == "__main__":
