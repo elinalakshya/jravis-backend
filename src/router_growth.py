@@ -1,11 +1,13 @@
 # -----------------------------------------------------------
-# Batch 12 — JRAVIS Growth Optimizer AI
+# Batch 12 — JRAVIS Growth Optimizer AI (FIXED PREFIX)
 # -----------------------------------------------------------
 
 from fastapi import APIRouter
 import time
 
-router = APIRouter(prefix="/api/growth", tags=["Growth Optimizer"])
+# IMPORTANT: Main.py already adds /api prefix
+# So here prefix must be ONLY "/growth"
+router = APIRouter(prefix="/growth", tags=["Growth Optimizer"])
 
 
 def compute_growth_score(perf):
@@ -39,7 +41,7 @@ async def monthly_target():
     if year < base_year:
         return {"year": year, "target_cr": base_value}
 
-    increment = (year - base_year) * 2  # +2 Cr per year
+    increment = (year - base_year) * 2
     target = base_value + increment
 
     return {"year": year, "target_cr": target}
