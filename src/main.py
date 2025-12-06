@@ -48,7 +48,13 @@ async def validate_api_key(request: Request, call_next):
     (Fixes the 403 issue and removes IP blocking)
     """
     # Allow public endpoints
-    open_paths = ["/", "/healthz", "/api/health"]
+    open_paths = [
+    "/",
+    "/healthz",
+    "/api/health",
+    "/task/next",
+    "/task/new"
+]
     if request.url.path in open_paths:
         return await call_next(request)
 
