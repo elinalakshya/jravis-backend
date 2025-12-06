@@ -10,7 +10,6 @@ router = APIRouter(prefix="/api/growth", tags=["Growth Optimizer"])
 
 
 def compute_growth_score(perf):
-    """Calculate performance quality score."""
     return (
         perf["clicks"] * 0.3 +
         perf["sales"] * 0.5 +
@@ -21,7 +20,7 @@ def compute_growth_score(perf):
 @router.post("/evaluate")
 async def evaluate_template(performance: dict):
     """
-    Input example:
+    Input:
     {
         "name": "template-2099",
         "clicks": 120,
@@ -42,9 +41,6 @@ async def evaluate_template(performance: dict):
 
 @router.get("/monthly-target")
 async def monthly_target():
-    """
-    Returns the required growth goal for Mission 2040.
-    """
     year = time.gmtime().tm_year
 
     base_year = 2026
