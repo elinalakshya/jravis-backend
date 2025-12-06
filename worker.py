@@ -8,6 +8,13 @@ import random
 import requests
 
 BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
+API_KEY = os.getenv("REPORT_API_CODE")  # Worker auth key
+
+
+HEADERS = {
+    "X-API-KEY": API_KEY,
+    "Content-Type": "application/json"
+}
 
 
 # ------------------------------------------------------
@@ -16,7 +23,8 @@ BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
 def generate_template():
     print("\n[Factory] Generating new template...")
     try:
-        res = requests.post(f"{BACKEND}/api/factory/generate").json()
+        r = requests.post(f"{BACKEND}/api/factory/generate", headers=HEADERS)
+        res = r.json()
         print("[Factory] Generated:", res)
         return res
     except Exception as e:
@@ -31,10 +39,12 @@ def scale_template(base_name):
     print("[Factory] Scaling:", base_name)
     try:
         count = random.randint(2, 6)
-        res = requests.post(
+        r = requests.post(
             f"{BACKEND}/api/factory/scale",
-            json={"base": base_name, "count": count}
-        ).json()
+            json={"base": base_name, "count": count},
+            headers=HEADERS
+        )
+        res = r.json()
 
         print("[Factory] Scaled:", res)
         return res
@@ -47,7 +57,6 @@ def scale_template(base_name):
 # Growth Optimizer Evaluation
 # ------------------------------------------------------
 def evaluate_growth(template_name):
-    """Simulates fetching performance and asks backend to score it."""
     try:
         perf = {
             "name": template_name,
@@ -56,9 +65,13 @@ def evaluate_growth(template_name):
             "trend": round(random.uniform(0.8, 1.6), 2)
         }
 
-        r = requests.post(f"{BACKEND}/api/growth/evaluate", json=perf)
-        res = r.json()
+        r = requests.post(
+            f"{BACKEND}/api/growth/evaluate",
+            json=perf,
+            headers=HEADERS
+        )
 
+        res = r.json()
         print("[Growth] Evaluation:", res)
         return res
 
@@ -82,16 +95,13 @@ def main():
             if template and "name" in template:
                 base = template["name"]
 
-                # Growth evaluation
                 growth = evaluate_growth(base)
 
-                # If winner → scale aggressively
                 if growth and growth.get("winner"):
                     print("[Growth] WINNER → Scaling aggressively!")
                     scale_template(base)
-                    scale_template(base)  # double scale
+                    scale_template(base)
                 else:
-                    # Normal scaling
                     scale_template(base)
 
         print("⏳ Sleeping 10 minutes...\n")
