@@ -1,53 +1,99 @@
+# -----------------------------------------------------------
+# JRAVIS — Payhip Auto Publisher
+# Mission 2040 — Digital Marketplace Engine
+# -----------------------------------------------------------
+
 import os
 import requests
 
 PAYHIP_API_KEY = os.getenv("PAYHIP_API_KEY")
+PAYHIP_EMAIL = os.getenv("PAYHIP_EMAIL")
 
-PAYHIP_PRODUCT_URL = "https://payhip.com/api/products"
+BASE_URL = "https://payhip.com/api/v2"
 
 
-def upload_to_payhip(name, description, price, zip_path):
-    """
-    Uploads a digital product (ZIP) to Payhip using their API.
-    """
-
-    if not PAYHIP_API_KEY:
-        return {"status": "error", "message": "Missing Payhip API key"}
-
+# -----------------------------------------------------------
+# Create Product
+# -----------------------------------------------------------
+def create_payhip_product(title, description, price):
     try:
-        # Prepare payload
+        url = f"{BASE_URL}/products"
+
         payload = {
             "api_key": PAYHIP_API_KEY,
-            "title": name,
+            "email": PAYHIP_EMAIL,
+            "title": title,
             "description": description,
-            "price": float(price),
-            "published": "true"
+            "price": price,
+            "type": "digital"
         }
 
-        # Attach file
-        with open(zip_path, "rb") as file:
-            files = {
-                "file": (os.path.basename(zip_path), file, "application/zip")
-            }
+        resp = requests.post(url, data=payload, timeout=20)
+        data = resp.json()
 
-            response = requests.post(PAYHIP_PRODUCT_URL, data=payload, files=files)
+        if not data.get("success"):
+            print("[Payhip] ❌ Product creation failed:", data)
+            return None
 
-        try:
-            res = response.json()
-        except:
-            return {"status": "error", "message": "Invalid JSON response from Payhip"}
-
-        if "error" in res:
-            return {"status": "error", "message": res["error"]}
-
-        # Product created
-        product_url = f"https://payhip.com/b/{res.get('product_id')}"
-
-        return {
-            "status": "success",
-            "product_id": res.get("product_id"),
-            "product_url": product_url
-        }
+        return data["product"]["id"]
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        print("[Payhip] ❌ Error creating product:", e)
+        return None
+
+
+# -----------------------------------------------------------
+# Upload digital file
+# -----------------------------------------------------------
+def upload_file(product_id, file_path):
+    try:
+        url = f"{BASE_URL}/products/{product_id}/files"
+
+        files = {
+            "file": (os.path.basename(file_path), open(file_path, "rb"))
+        }
+
+        payload = {
+            "api_key": PAYHIP_API_KEY,
+            "email": PAYHIP_EMAIL
+        }
+
+        resp = requests.post(url, data=payload, files=files, timeout=20)
+        return resp.json()
+
+    except Exception as e:
+        print("[Payhip] ❌ Upload error:", e)
+        return None
+
+
+# -----------------------------------------------------------
+# MAIN ENTRY — Called by Unified Engine
+# -----------------------------------------------------------
+def publish_to_payhip(template_name, zip_path):
+    print(f"[Payhip] 🚀 Publishing {template_name} ...")
+
+    if not PAYHIP_API_KEY:
+        return {"status": "error", "message": "Missing PAYHIP_API_KEY"}
+
+    # Step 1: Create product
+    product_id = create_payhip_product(
+        title=f"{template_name} — JRAVIS Template",
+        description="Premium automated template by JRAVIS. Instant download.",
+        price="12.00"
+    )
+
+    if not product_id:
+        return {"status": "error", "message": "Payhip product creation failed"}
+
+    # Step 2: Upload ZIP file
+    upload_file(product_id, zip_path)
+
+    product_url = f"https://payhip.com/{product_id}"
+
+    print(f"[Payhip] ✅ Uploaded Successfully → {product_url}")
+
+    return {
+        "status": "success",
+        "url": product_url,
+        "product_id": product_id
+    }
