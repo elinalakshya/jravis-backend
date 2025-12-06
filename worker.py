@@ -1,89 +1,52 @@
 # -----------------------------------------------------------
-# JRAVIS WORKER — Batch 9 Auto-Scaling Factory Engine
-# Generates templates + scales variants every 10 minutes
+# JRAVIS WORKER — Batch 10 Auto Marketplace Uploader
 # -----------------------------------------------------------
 
 import os
 import time
-import random
+import json
 import requests
-
 
 BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
 
+def upload_template(name):
+    print(f"[Uploader] Uploading {name} ...")
+    try:
+        res = requests.post(f"{BACKEND}/api/uploader/upload",
+                            json={"name": name}).json()
+        print("[Uploader] Upload result:", json.dumps(res, indent=2))
+    except Exception as e:
+        print("[Uploader] ERROR:", e)
 
-# ------------------------------------------------------
-# 1️⃣ New Template Generator (POST + JSON BODY REQUIRED)
-# ------------------------------------------------------
-def generate_template():
-    print("\n[Factory] Generating new template...")
-
-    payload = {
-        "template_name": f"auto_template_{int(time.time())}"
-    }
+def process():
+    """
+    Automatically checks for freshly generated templates
+    and uploads them to all marketplaces.
+    """
+    print("[Uploader] Checking for new templates...")
 
     try:
-        res = requests.post(
-            f"{BACKEND}/api/factory/generate",
-            json=payload,     # << REQUIRED
-            timeout=30
-        ).json()
+        res = requests.get(f"{BACKEND}/api/factory/list").json()
+        templates = res.get("templates", [])
+    except:
+        print("[Uploader] Cannot fetch template list.")
+        return
 
-        print("[Factory] Generated:", res)
-        return res
+    for t in templates:
+        if not t.get("uploaded", False):
+            upload_template(t["name"])
 
-    except Exception as e:
-        print("[Factory] ERROR generating:", e)
-        return None
+            # Mark template as uploaded
+            requests.post(f"{BACKEND}/api/factory/mark_uploaded",
+                          json={"name": t["name"]})
 
-
-# ------------------------------------------------------
-# 2️⃣ Scale Variants
-# ------------------------------------------------------
-def scale_template(base_name):
-    print("[Factory] Scaling template:", base_name)
-
-    try:
-        count = random.randint(2, 6)
-
-        res = requests.post(
-            f"{BACKEND}/api/factory/scale",
-            json={"base": base_name, "count": count},
-            timeout=30
-        ).json()
-
-        print("[Factory] Scaled Variants:", res)
-        return res
-
-    except Exception as e:
-        print("[Factory] ERROR scaling:", e)
-        return None
-
-
-# ------------------------------------------------------
-# 3️⃣ Worker Loop
-# ------------------------------------------------------
 def main():
-    print("🚀 JRAVIS Factory Worker Started (Batch 9 Active)")
+    print("🚀 JRAVIS Batch-10 Uploader Worker Started")
 
     while True:
+        process()
+        print("⏳ Sleeping 15 minutes...\n")
+        time.sleep(900)
 
-        # Generate approximately every 20–30 minutes
-        if random.random() < 0.45:
-            template = generate_template()
-
-            if template and "name" in template:
-                base = template["name"]
-
-                # Auto-scale variants
-                scale_template(base)
-
-        print("⏳ Sleeping 10 minutes...\n")
-        time.sleep(600)
-
-
-# ------------------------------------------------------
-# Entry Point
-# ------------------------------------------------------
 if __name__ == "__main__":
     main()
