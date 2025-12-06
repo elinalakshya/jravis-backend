@@ -1,6 +1,5 @@
 # -----------------------------------------------------------
-# JRAVIS BACKEND — MASTER FASTAPI ROUTER
-# Mission 2040 Engine — Batches 1 to 12 Activated
+# JRAVIS BACKEND — MASTER FASTAPI ROUTER (FIXED VERSION)
 # -----------------------------------------------------------
 
 from fastapi import FastAPI, Request
@@ -37,15 +36,32 @@ app = FastAPI(
 
 
 # ------------------------------------------------------
-# Block Legacy Worker IP
+# SECURITY: API KEY VALIDATION (for worker)
 # ------------------------------------------------------
-BLOCKED_IP = "74.220.48.249"
+WORKER_KEY = settings.REPORT_API_CODE
+
 
 @app.middleware("http")
-async def block_old_ip(request: Request, call_next):
-    client_ip = request.client.host
-    if client_ip == BLOCKED_IP:
-        return JSONResponse({"error": "Forbidden"}, status_code=403)
+async def validate_api_key(request: Request, call_next):
+    """
+    BLOCK ONLY requests missing correct API-KEY
+    (Fixes the 403 issue and removes IP blocking)
+    """
+    # Allow public endpoints
+    open_paths = ["/", "/healthz", "/api/health"]
+    if request.url.path in open_paths:
+        return await call_next(request)
+
+    api_key = request.headers.get("X-API-KEY")
+
+    # If no key → reject
+    if not api_key:
+        return JSONResponse({"error": "Missing API key"}, status_code=401)
+
+    # If wrong key → reject
+    if api_key != WORKER_KEY:
+        return JSONResponse({"error": "Invalid API key"}, status_code=403)
+
     return await call_next(request)
 
 
@@ -58,21 +74,7 @@ app.include_router(streams_router, prefix="/api")
 app.include_router(realtime_api_router, prefix="/api")
 app.include_router(intelligence_router, prefix="/api")
 app.include_router(factory_router, prefix="/api")
-app.include_router(growth_router, prefix="/api")   # ⭐ Batch-12 added
-
-
-# ------------------------------------------------------
-# N8N Sync Endpoint (Batch 8)
-# ------------------------------------------------------
-@app.post("/n8n/sync")
-async def n8n_sync_handler(request: Request):
-    body = await request.json()
-    incoming_secret = body.get("secret")
-
-    if incoming_secret != settings.N8N_WEBHOOK_SECRET:
-        return JSONResponse({"error": "Invalid secret"}, status_code=401)
-
-    return {"status": "ok", "received": body}
+app.include_router(growth_router, prefix="/api")  # Batch-12
 
 
 # ------------------------------------------------------
