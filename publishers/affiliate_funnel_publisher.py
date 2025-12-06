@@ -1,40 +1,80 @@
-# File: publishers/affiliate_funnel_publisher.py
 import os
 import json
-import time
-from typing import Dict, Any
+from openai import OpenAI
 
-OUTPUT_DIR = "/opt/render/project/src/output/affiliate_funnel"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+AFFILIATE_BASE_URL = "https://your-affiliate-domain.com/?ref="  # optional
 
-def ensure_output_dir():
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
-def publish_affiliate_funnel(payload: Dict[str, Any]) -> Dict[str, Any]:
+
+def generate_funnel_content(product_title, product_url, affiliate_code=None):
     """
-    Affiliate Funnel publisher (simulated).
-    Saves landing page + promo content JSON.
+    Generates a complete affiliate funnel / blog article promoting a product.
     """
-    ensure_output_dir()
 
-    timestamp = int(time.time())
-    filename = f"{OUTPUT_DIR}/affiliate_funnel_{timestamp}.json"
+    # Build affiliate link if provided
+    final_url = product_url
+    if affiliate_code:
+        final_url = f"{product_url}?aff={affiliate_code}"
+
+    prompt = f"""
+    Write a highly persuasive affiliate marketing funnel article promoting:
+    Product: {product_title}
+    Link: {final_url}
+
+    Requirements:
+    - Conversational, human, friendly tone
+    - NOT detectable as AI generated
+    - Include benefits, emotional triggers, clear call-to-action
+    - 300–500 words
+    - Add “Get Started” CTA with link
+    """
 
     try:
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=4)
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You write premium human-like marketing funnels."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=800
+        )
 
+        article = completion.choices[0].message.content
         return {
-            "publisher": "affiliate_funnel",
-            "success": True,
-            "message": "Affiliate funnel publish simulated",
-            "file": filename,
-            "data": payload,
+            "status": "success",
+            "content": article,
+            "url": final_url
         }
 
     except Exception as e:
-        return {
-            "publisher": "affiliate_funnel",
-            "success": False,
-            "error": str(e)
-        }
+        return {"status": "error", "message": str(e)}
+
+
+def save_funnel_html(title, content, out_dir="funnels"):
+    """
+    Saves the article as an HTML landing page.
+    """
+
+    os.makedirs(out_dir, exist_ok=True)
+
+    filename = title.lower().replace(" ", "-") + ".html"
+    filepath = os.path.join(out_dir, filename)
+
+    html = f"""
+    <html>
+    <head>
+        <title>{title} - Funnel</title>
+    </head>
+    <body>
+    <h1>{title}</h1>
+    <div>{content}</div>
+    </body>
+    </html>
+    """
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    return {"status": "success", "file": filepath}
