@@ -5,7 +5,8 @@ from src.factory.zip_factory import (
     list_assets
 )
 
-router = APIRouter(prefix="/api/factory", tags=["Factory"])
+# IMPORTANT: prefix should be /factory (NOT /api/factory)
+router = APIRouter(prefix="/factory", tags=["Factory"])
 
 
 @router.post("/generate")
