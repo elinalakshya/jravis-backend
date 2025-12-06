@@ -3,7 +3,6 @@
 # -----------------------------------------------------------
 
 from fastapi import APIRouter
-import random
 import time
 
 router = APIRouter(prefix="/api/growth", tags=["Growth Optimizer"])
@@ -19,15 +18,6 @@ def compute_growth_score(perf):
 
 @router.post("/evaluate")
 async def evaluate_template(performance: dict):
-    """
-    Input:
-    {
-        "name": "template-2099",
-        "clicks": 120,
-        "sales": 6,
-        "trend": 1.4
-    }
-    """
     score = compute_growth_score(performance)
     is_winner = score > 40
 
