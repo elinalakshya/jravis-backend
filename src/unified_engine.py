@@ -1,141 +1,89 @@
 # -----------------------------------------------------------
-# JRAVIS UNIFIED ENGINE — Phase-1 Monetization Pipeline
-# Connects:
-#   - Gumroad Uploader
-#   - Payhip Uploader
-#   - Printify POD Generator
-#   - Newsletter Automation
-#   - Affiliate Funnel Generator
-#   - Template Machine Metadata Generator
+# JRAVIS — Unified Monetization Engine
+# Mission 2040 — Phase-1 Full Automation
 # -----------------------------------------------------------
 
 import os
-from publishers.gumroad_publisher import upload_to_gumroad
-from publishers.payhip_publisher import upload_to_payhip
-from publishers.printify_publisher import create_printify_product
-from publishers.newsletter_content_publisher import process_newsletter
-from publishers.affiliate_funnel_publisher import (
-    generate_funnel_content,
-    save_funnel_html
-)
-from publishers.template_machine_publisher import template_machine_pipeline
+import time
+
+# ----------------- Import Publishers -----------------------
+from publishers.gumroad_publisher import publish_to_gumroad
+from publishers.payhip_publisher import publish_to_payhip
+from publishers.printify_publisher import publish_to_printify
+from publishers.newsletter_publisher import publish_newsletter
+from publishers.affiliate_funnel_publisher import publish_affiliate_funnel
+from publishers.multi_marketplace_publisher import publish_to_marketplaces
 
 
-# ------------------------------------------------------
-# Helpers
-# ------------------------------------------------------
+# -----------------------------------------------------------
+# MAIN ENGINE FUNCTION
+# -----------------------------------------------------------
+def run_all_streams_micro_engine(template_name, zip_path, cover_image):
+    print("\n[ENGINE] ⚙️  Starting Unified Monetization Pipeline")
 
-def pick_price():
-    """Random price picker for templates."""
-    import random
-    return random.choice([5, 7, 9, 12, 15, 19, 21, 25])
+    results = {}
 
+    # ----------------- 1. GUMROAD ---------------------------
+    try:
+        print("[ENGINE] 🚀 Uploading to Gumroad...")
+        gumroad_result = publish_to_gumroad(template_name, zip_path, cover_image)
+        results["gumroad"] = gumroad_result
+    except Exception as e:
+        print("[ENGINE] ❌ Gumroad Error:", e)
+        results["gumroad"] = {"status": "error", "error": str(e)}
 
-def safe_log(msg):
-    print(f"[ENGINE] {msg}")
+    # ----------------- 2. PAYHIP ----------------------------
+    try:
+        print("[ENGINE] 🚀 Uploading to Payhip...")
+        payhip_result = publish_to_payhip(template_name, zip_path)
+        results["payhip"] = payhip_result
+    except Exception as e:
+        print("[ENGINE] ❌ Payhip Error:", e)
+        results["payhip"] = {"status": "error", "error": str(e)}
 
+    # ----------------- 3. PRINTIFY (T-Shirt POD) ------------
+    try:
+        print("[ENGINE] 👕 Sending artwork to Printify...")
+        printify_result = publish_to_printify(template_name, cover_image)
+        results["printify"] = printify_result
+    except Exception as e:
+        print("[ENGINE] ❌ Printify Error:", e)
+        results["printify"] = {"status": "error", "error": str(e)}
 
-# ------------------------------------------------------
-# MAIN ENGINE PIPELINE
-# ------------------------------------------------------
+    # ----------------- 4. NEWSLETTER ------------------------
+    try:
+        print("[ENGINE] 📧 Sending Newsletter Blast...")
+        newsletter_result = publish_newsletter(
+            template_name,
+            gumroad_result.get("url") if isinstance(gumroad_result, dict) else "",
+            payhip_result.get("url") if isinstance(payhip_result, dict) else "",
+        )
+        results["newsletter"] = newsletter_result
+    except Exception as e:
+        print("[ENGINE] ⚠️ Newsletter Error:", e)
+        results["newsletter"] = {"status": "error", "error": str(e)}
 
-def run_all_streams_micro_engine(zip_path, base_name):
-    """
-    Runs ALL monetization channels after a ZIP is generated.
-    """
+    # ----------------- 5. AFFILIATE FUNNEL -------------------
+    try:
+        print("[ENGINE] 🌀 Creating Affiliate Funnel Page...")
+        funnel_result = publish_affiliate_funnel(
+            template_name,
+            gumroad_result.get("url") if isinstance(gumroad_result, dict) else "",
+            payhip_result.get("url") if isinstance(payhip_result, dict) else "",
+        )
+        results["funnel"] = funnel_result
+    except Exception as e:
+        print("[ENGINE] ❌ Funnel Error:", e)
+        results["funnel"] = {"status": "error", "error": str(e)}
 
-    safe_log("⚙️  Starting Unified Monetization Pipeline")
+    # ----------------- 6. MARKETPLACES -----------------------
+    try:
+        print("[ENGINE] 🌍 Publishing to Marketplaces...")
+        marketplace_result = publish_to_marketplaces(template_name, zip_path)
+        results["marketplaces"] = marketplace_result
+    except Exception as e:
+        print("[ENGINE] ❌ Marketplace Error:", e)
+        results["marketplaces"] = {"status": "error", "error": str(e)}
 
-    # --------------------------------------------------
-    # 1) Generate Metadata via Template Machine
-    # --------------------------------------------------
-    base_title = base_name.replace("-", " ").title()
-    base_description = f"A premium editable digital template named {base_title}."
-
-    machine = template_machine_pipeline(base_title, base_description)
-
-    if machine.get("status") != "success":
-        safe_log("❌ Template Machine Error — using fallback metadata")
-        metadata = {
-            "title": base_title,
-            "description": base_description,
-            "tags": ["template", "digital", "design"]
-        }
-    else:
-        metadata = machine["variant"]
-
-    title = metadata["title"]
-    description = metadata["description"]
-    price = pick_price()
-
-    safe_log(f"📝 Metadata Selected: {title} — ${price}")
-
-    # --------------------------------------------------
-    # 2) Upload to Gumroad
-    # --------------------------------------------------
-    safe_log("🚀 Uploading to Gumroad...")
-    gumroad_res = upload_to_gumroad(title, description, price, zip_path)
-
-    if gumroad_res.get("status") == "success":
-        gumroad_url = gumroad_res["product_url"]
-        safe_log(f"✅ Gumroad Ready: {gumroad_url}")
-    else:
-        gumroad_url = None
-        safe_log("❌ Gumroad Upload Failed")
-
-    # --------------------------------------------------
-    # 3) Upload to Payhip
-    # --------------------------------------------------
-    safe_log("🚀 Uploading to Payhip...")
-    payhip_res = upload_to_payhip(title, description, price, zip_path)
-
-    if payhip_res.get("status") == "success":
-        payhip_url = payhip_res["product_url"]
-        safe_log(f"✅ Payhip Ready: {payhip_url}")
-    else:
-        payhip_url = None
-        safe_log("❌ Payhip Upload Failed")
-
-    # --------------------------------------------------
-    # 4) Generate POD Product in Printify
-    # --------------------------------------------------
-    safe_log("👕 Sending artwork to Printify...")
-    # We use either Gumroad or Payhip link as mockup reference
-    mock_link = gumroad_url or payhip_url or "https://placeholder.example/template.jpg"
-
-    pod_res = create_printify_product(title, description, mock_link)
-
-    if pod_res.get("status") == "success":
-        safe_log(f"✅ POD Product Created: {pod_res['printify_url']}")
-    else:
-        safe_log("❌ Printify Failed")
-
-    # --------------------------------------------------
-    # 5) Newsletter Blast
-    # --------------------------------------------------
-    safe_log("📧 Sending Newsletter Blast...")
-    if gumroad_url:
-        newsletter_res = process_newsletter(title, gumroad_url)
-    elif payhip_url:
-        newsletter_res = process_newsletter(title, payhip_url)
-    else:
-        newsletter_res = {"status": "error", "message": "No link available"}
-
-    if newsletter_res.get("status") == "success":
-        safe_log("✅ Newsletter Sent")
-    else:
-        safe_log("⚠️ Newsletter Error")
-
-    # --------------------------------------------------
-    # 6) Affiliate Funnel Page
-    # --------------------------------------------------
-    safe_log("🌀 Creating Affiliate Funnel Page...")
-    funnel = generate_funnel_content(title, gumroad_url or payhip_url)
-
-    if funnel.get("status") == "success":
-        save_res = save_funnel_html(title, funnel["content"])
-        safe_log(f"✅ Funnel Saved: {save_res['file']}")
-    else:
-        safe_log("❌ Funnel Generation Failed")
-
-    safe_log("🎯 Monetization Cycle Completed")
+    print("[ENGINE] 🎯 Monetization Cycle Completed")
+    return results
