@@ -1,11 +1,10 @@
 # -----------------------------------------------------------
-# JRAVIS Unified Monetization Engine — FINAL
+# JRAVIS Unified Monetization Engine (FINAL)
 # -----------------------------------------------------------
 
 import os
 import requests
 
-# Publisher imports
 from publishers.gumroad_publisher import publish_to_gumroad
 from publishers.payhip_publisher import publish_to_payhip
 from publishers.printify_publisher import publish_to_printify
@@ -14,93 +13,88 @@ from publishers.affiliate_funnel_publisher import generate_affiliate_funnel
 from publishers.multi_marketplace_publisher import publish_to_marketplaces
 
 
-# -----------------------------------------------------------
-# Helper: Extract clean title
-# -----------------------------------------------------------
-def extract_title(zip_path: str) -> str:
-    name = os.path.basename(zip_path).replace(".zip", "")
-    return name.replace("_", " ").title()
 
-
-# -----------------------------------------------------------
-# Download ZIP from backend
-# -----------------------------------------------------------
-def download_zip(backend_url, zip_path):
-    url = f"{backend_url}/{zip_path}"
-    print(f"[DOWNLOAD] Fetching ZIP → {url}")
-
-    try:
-        r = requests.get(url)
-
-        if r.status_code != 200:
-            print("[DOWNLOAD ERROR]", r.text)
-            return None
-
-        local_path = f"/tmp/{os.path.basename(zip_path)}"
-        with open(local_path, "wb") as f:
-            f.write(r.content)
-
-        print(f"[DOWNLOAD] Saved to {local_path}")
-        return local_path
-
-    except Exception as e:
-        print("[DOWNLOAD ERROR]", e)
-        return None
-
-
-# -----------------------------------------------------------
-# MASTER ENGINE
-# -----------------------------------------------------------
 def run_all_streams_micro_engine(zip_path: str, title: str, backend_url: str):
-    print("⚙️ JRAVIS UNIFIED ENGINE STARTED")
-    print("📦 Input ZIP →", zip_path)
+    """
+    FULL monetization engine.
+    Now includes backend URL for downloading template ZIPs.
+    """
 
-    clean_title = extract_title(zip_path)
-    print("📝 Title →", clean_title)
-
-    # -----------------------------------------------------------
-    # STEP 1 — DOWNLOAD ZIP
-    # -----------------------------------------------------------
-    local_zip = download_zip(backend_url, zip_path)
-    if not local_zip:
-        print("❌ ZIP Download Failed — Skipping monetization.")
-        return
+    print("\n⚙️  JRAVIS UNIFIED ENGINE STARTED")
+    print(f"📦 Input ZIP → {zip_path}")
+    print(f"📝 Title → {title}")
 
     # -----------------------------------------------------------
-    # STEP 2 — Monetization Streams
+    # Try downloading ZIP from backend (fixing NOT FOUND issue)
     # -----------------------------------------------------------
 
-    # Gumroad
-    print("[GUMROAD] Uploading...")
-    gumroad_res = publish_to_gumroad(local_zip, clean_title)
+    if not os.path.exists(zip_path):
+        download_url = f"{backend_url}/{zip_path}"
+        print(f"[DOWNLOAD] Fetching: {download_url}")
 
-    # Payhip
-    print("[PAYHIP] Uploading...")
-    payhip_res = publish_to_payhip(local_zip, clean_title)
+        try:
+            r = requests.get(download_url)
+            if r.status_code == 200:
+                os.makedirs("factory_output", exist_ok=True)
+                with open(zip_path, "wb") as f:
+                    f.write(r.content)
+                print("[DOWNLOAD] ZIP saved locally.")
+            else:
+                print("[DOWNLOAD ERROR]", r.text)
+                print("❌ ZIP Download Failed — Skipping monetization.")
+                return
+        except Exception as e:
+            print("[DOWNLOAD EXCEPTION]", e)
+            return
 
-    # Printify
-    print("[PRINTIFY] Uploading POD asset...")
-    printify_res = publish_to_printify(local_zip, clean_title)
+    # -----------------------------------------------------------
+    # GUMROAD
+    # -----------------------------------------------------------
+    gum = publish_to_gumroad(zip_path, title)
 
-    # Newsletter
-    print("[NEWSLETTER] Sending campaign...")
-    newsletter_res = send_newsletter(clean_title)
+    # -----------------------------------------------------------
+    # PAYHIP
+    # -----------------------------------------------------------
+    pay = publish_to_payhip(zip_path, title)
 
-    # Funnel
-    print("[FUNNEL] Generating...")
-    funnel_res = generate_affiliate_funnel(clean_title)
+    # -----------------------------------------------------------
+    # PRINTIFY
+    # -----------------------------------------------------------
+    pod = publish_to_printify(zip_path, title)
 
-    # Marketplaces
-    print("[MARKETPLACES] Publishing...")
-    marketplace_res = publish_to_marketplaces(local_zip, clean_title)
+    # -----------------------------------------------------------
+    # NEWSLETTER
+    # -----------------------------------------------------------
+    mail = send_newsletter(title)
 
-    print("🎉 MONETIZATION COMPLETE")
+    # -----------------------------------------------------------
+    # FUNNEL PAGE
+    # -----------------------------------------------------------
+    funnel = generate_affiliate_funnel(title)
+
+    # -----------------------------------------------------------
+    # MARKETPLACES
+    # -----------------------------------------------------------
+    market = publish_to_marketplaces(zip_path, title)
+
+    # -----------------------------------------------------------
+    # SUMMARY
+    # -----------------------------------------------------------
+    print("\n🎉 MONETIZATION COMPLETE")
+    print("--------------------------------------")
+    print("GUMROAD →", gum)
+    print("PAYHIP →", pay)
+    print("PRINTIFY →", pod)
+    print("NEWSLETTER →", mail)
+    print("FUNNEL →", funnel)
+    print("MARKETPLACES →", market)
+    print("--------------------------------------\n")
 
     return {
-        "gumroad": gumroad_res,
-        "payhip": payhip_res,
-        "printify": printify_res,
-        "newsletter": newsletter_res,
-        "funnel": funnel_res,
-        "marketplace": marketplace_res
+        "gumroad": gum,
+        "payhip": pay,
+        "printify": pod,
+        "newsletter": mail,
+        "funnel": funnel,
+        "marketplaces": market,
     }
