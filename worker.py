@@ -1,6 +1,5 @@
 # -----------------------------------------------------------
-# JRAVIS WORKER — FINAL FULL-AUTOMATION ENGINE
-# Generates → Evaluates → Scales → Downloads ZIP → Monetizes
+# JRAVIS WORKER — FINAL VERSION WITH API KEY FIX
 # -----------------------------------------------------------
 
 import os
@@ -9,9 +8,7 @@ import time
 import random
 import requests
 
-# -----------------------------------------------------------
-# FIX PYTHON PATH
-# -----------------------------------------------------------
+# Ensure src is in path
 SRC_PATH = os.path.join(os.path.dirname(__file__), "src")
 if SRC_PATH not in sys.path:
     print("🔧 Adding SRC path:", SRC_PATH)
@@ -19,123 +16,129 @@ if SRC_PATH not in sys.path:
 
 from unified_engine import run_all_streams_micro_engine
 
-
-# -----------------------------------------------------------
-# BACKEND URL
-# -----------------------------------------------------------
+# Backend URL + Worker API Key
 BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
-API_HEADERS = {
-    "X-API-KEY": os.getenv("WORKER_API_KEY", "")
+WORKER_KEY = os.getenv("WORKER_API_KEY")
+
+HEADERS = {
+    "X-API-KEY": WORKER_KEY,
+    "Content-Type": "application/json"
 }
 
-
-# -----------------------------------------------------------
-# CREATE REQUIRED FOLDERS
-# -----------------------------------------------------------
+# Ensure folders exist
 for folder in ["funnels", "factory_output"]:
     if not os.path.exists(folder):
         print(f"📁 Creating missing folder: {folder}")
         os.makedirs(folder, exist_ok=True)
 
-
-# -----------------------------------------------------------
-# 1) Generate Template ZIP
-# -----------------------------------------------------------
+# ------------------------------------------------------
+# GENERATE TEMPLATE
+# ------------------------------------------------------
 def generate_template():
     print("[Factory] Generating template...")
     try:
         res = requests.post(
             f"{BACKEND}/api/factory/generate",
-            headers=API_HEADERS
+            headers=HEADERS
         )
+        print("[Factory] Response:", res.json())
         return res.json()
     except Exception as e:
-        print("[Factory ERROR]", e)
+        print("[Factory ERROR]:", e)
         return None
 
 
-# -----------------------------------------------------------
-# 2) Scale Variants
-# -----------------------------------------------------------
+# ------------------------------------------------------
+# SCALE TEMPLATE
+# ------------------------------------------------------
 def scale_template(name):
+    print("[Factory] Scaling:", name)
     try:
-        count = random.randint(2, 6)
+        payload = {"base": name, "count": random.randint(2, 6)}
+
         res = requests.post(
             f"{BACKEND}/api/factory/scale",
-            json={"base": name, "count": count},
-            headers=API_HEADERS
+            json=payload,
+            headers=HEADERS
         )
+        print("[Factory] Scaled:", res.json())
         return res.json()
     except Exception as e:
-        print("[Scale ERROR]", e)
+        print("[Scale ERROR]:", e)
         return None
 
 
-# -----------------------------------------------------------
-# 3) Growth Scoring
-# -----------------------------------------------------------
-def evaluate_growth(name):
-    fake_score = {
-        "template": name,
-        "score": round(random.uniform(20, 160), 3),
-        "winner": random.choice([True, False]),
-        "action": "scale"
-    }
-    print("[Growth] Evaluation:", fake_score)
-    return fake_score
+# ------------------------------------------------------
+# GROWTH SCORE
+# ------------------------------------------------------
+def score_template(name):
+    try:
+        payload = {
+            "template": name,
+            "clicks": random.randint(20, 200),
+            "sales": random.randint(0, 15),
+            "trend": round(random.uniform(0.8, 1.4), 2)
+        }
+
+        res = requests.post(
+            f"{BACKEND}/api/growth/evaluate",
+            json=payload,
+            headers=HEADERS
+        )
+        data = res.json()
+        print("[Growth] Score:", data)
+        return data
+    except Exception as e:
+        print("[Growth ERROR]:", e)
+        return None
 
 
-# -----------------------------------------------------------
-# 4) FULL CYCLE
-# -----------------------------------------------------------
+# ------------------------------------------------------
+# MAIN CYCLE
+# ------------------------------------------------------
 def run_cycle():
     print("\n🔥 RUNNING JRAVIS CYCLE (FINAL)")
     print("--------------------------------------")
 
-    # Step 1 — Generate
-    template = generate_template()
-    if not template or "name" not in template:
+    # 1. Generate Template
+    gen = generate_template()
+    if not gen or "name" not in gen:
         print("❌ Template generation failed.")
         time.sleep(3)
         return
 
-    name = template["name"]
-    zip_path = template.get("zip")
-    print(f"[Factory] Response: {template}")
+    name = gen["name"]
+    zip_path = gen["zip"]
 
-    # Step 2 — Growth
-    score = evaluate_growth(name)
-
-    # Step 3 — Scaling
-    if score.get("winner"):
-        print("[Growth] WINNER → DOUBLE SCALE")
-        scale_template(name)
+    # 2. Growth Score
+    score = score_template(name)
+    if not score:
+        print("⚠ Growth score failed — continuing normal scale")
         scale_template(name)
     else:
-        print("[Growth] Normal Scale")
-        scale_template(name)
+        if score.get("winner"):
+            print("[Growth] WINNER → DOUBLE SCALE")
+            scale_template(name)
+            scale_template(name)
+        else:
+            print("[Growth] Normal Scale")
+            scale_template(name)
 
-    # Step 4 — Monetization
+    # 3. Monetization
     print("💰 Monetizing...")
-
-    if zip_path:
-        run_all_streams_micro_engine(zip_path, name, BACKEND)
-    else:
-        print("⚠️ Missing ZIP path — skipping monetization")
+    run_all_streams_micro_engine(zip_path, name)
 
 
-# -----------------------------------------------------------
-# MAIN LOOP
-# -----------------------------------------------------------
+# ------------------------------------------------------
+# ENTRY
+# ------------------------------------------------------
 def main():
     print("🚀 JRAVIS WORKER STARTED — FINAL MODE")
 
     while True:
         run_cycle()
-        print("💤 Sleeping 3 seconds...")
         time.sleep(3)
 
 
-# -----------------------------------------------------------
 if __name__ == "__main__":
     main()
