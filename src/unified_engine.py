@@ -1,9 +1,11 @@
 # -----------------------------------------------------------
 # JRAVIS Unified Monetization Engine
-# Phase-1 Auto Upload → Promotion → Funnel Generation
+# Phase-1 Upload → Promotion → Funnel Generation
 # -----------------------------------------------------------
 
 import os
+
+# Safe imports (Render-compatible)
 from publishers.gumroad_publisher import upload_to_gumroad
 from publishers.payhip_publisher import upload_to_payhip
 from publishers.printify_publisher import upload_to_printify
@@ -13,78 +15,109 @@ from publishers.multi_marketplace_publisher import publish_to_marketplaces
 
 
 # -----------------------------------------------------------
-# Helper — Extract product title from ZIP
+# Clean product title from ZIP filename
 # -----------------------------------------------------------
 def extract_title(zip_path: str) -> str:
     base = os.path.basename(zip_path)
-    name = base.replace(".zip", "").replace("_", " ").title()
+    name = (
+        base.replace(".zip", "")
+            .replace("-", " ")
+            .replace("_", " ")
+            .title()
+    )
     return name
 
 
 # -----------------------------------------------------------
-# Master Engine — Runs ALL monetization streams
+# JRAVIS MASTER ENGINE — RUN ALL STREAMS SAFELY
 # -----------------------------------------------------------
 def run_all_streams_micro_engine(zip_path: str, template_code: str):
-    print("\n⚙️  ENGINE STARTED — JRAVIS Unified Monetization System")
-    print(f"📦 ZIP: {zip_path}")
-    
+    print("\n⚙️ JRAVIS ENGINE — Monetization Pipeline Started")
+    print(f"📦 File: {zip_path}")
+
     title = extract_title(zip_path)
+    print(f"📝 Product Title: {title}")
 
-    print(f"📝 Using Title: {title}")
-
-    # -----------------------------------------------------------
-    # 1) Gumroad Upload
-    # -----------------------------------------------------------
-    print("\n🚀 Uploading to Gumroad...")
-    gumroad_res = upload_to_gumroad(zip_path, title)
+    # ---------------------------
+    # GUMROAD
+    # ---------------------------
+    print("\n🚀 Gumroad Upload...")
+    try:
+        gumroad_res = upload_to_gumroad(zip_path, title)
+    except Exception as e:
+        gumroad_res = {"status": "failed", "error": str(e)}
+        print("❌ Gumroad Error:", e)
 
     gumroad_link = None
     try:
-        gumroad_link = gumroad_res["response"]["product"]["short_url"]
+        gumroad_link = gumroad_res.get("response", {}).get("product", {}).get("short_url")
     except:
+        pass
+
+    if not gumroad_link:
         gumroad_link = "https://gumroad.com"
 
-    # -----------------------------------------------------------
-    # 2) Payhip Upload
-    # -----------------------------------------------------------
-    print("\n🚀 Uploading to Payhip...")
-    payhip_res = upload_to_payhip(zip_path, title)
+    # ---------------------------
+    # PAYHIP
+    # ---------------------------
+    print("\n🚀 Payhip Upload...")
+    try:
+        payhip_res = upload_to_payhip(zip_path, title)
+    except Exception as e:
+        payhip_res = {"status": "failed", "error": str(e)}
+        print("❌ Payhip Error:", e)
 
-    # -----------------------------------------------------------
-    # 3) Printify POD Product
-    # -----------------------------------------------------------
-    print("\n👕 Sending artwork to Printify...")
-    printify_res = upload_to_printify(zip_path, title)
+    # ---------------------------
+    # PRINTIFY
+    # ---------------------------
+    print("\n👕 Printify POD...")
+    try:
+        printify_res = upload_to_printify(zip_path, title)
+    except Exception as e:
+        printify_res = {"status": "failed", "error": str(e)}
+        print("❌ Printify Error:", e)
 
-    # -----------------------------------------------------------
-    # 4) Newsletter Promotion
-    # -----------------------------------------------------------
-    print("\n📧 Sending Newsletter Blast...")
-    newsletter_res = send_newsletter(title, gumroad_link)
+    # ---------------------------
+    # NEWSLETTER
+    # ---------------------------
+    print("\n📧 Newsletter Promotion...")
+    try:
+        newsletter_res = send_newsletter(title, gumroad_link)
+    except Exception as e:
+        newsletter_res = {"status": "failed", "error": str(e)}
+        print("❌ Newsletter Error:", e)
 
-    # -----------------------------------------------------------
-    # 5) Affiliate Funnel (HTML File)
-    # -----------------------------------------------------------
-    print("\n🌀 Creating Affiliate Funnel Page...")
-    funnel_res = create_affiliate_funnel(title, gumroad_link)
+    # ---------------------------
+    # AFFILIATE FUNNEL
+    # ---------------------------
+    print("\n🌀 Affiliate Funnel Page...")
+    try:
+        funnel_res = create_affiliate_funnel(title, gumroad_link)
+    except Exception as e:
+        funnel_res = {"status": "failed", "error": str(e)}
+        print("❌ Funnel Error:", e)
 
-    # -----------------------------------------------------------
-    # 6) Multi-Marketplace Distribution (placeholder)
-    # -----------------------------------------------------------
-    print("\n🌍 Publishing to Multi-Marketplaces...")
-    marketplace_res = publish_to_marketplaces(zip_path, title)
+    # ---------------------------
+    # MULTI-MARKETPLACE UPLOAD
+    # ---------------------------
+    print("\n🌍 Multi-Marketplace Distribution...")
+    try:
+        marketplace_res = publish_to_marketplaces(zip_path, title)
+    except Exception as e:
+        marketplace_res = {"status": "failed", "error": str(e)}
+        print("❌ Marketplace Error:", e)
 
-    # -----------------------------------------------------------
-    # Summary
-    # -----------------------------------------------------------
-    print("\n🎉 JRAVIS PHASE-1 MONETIZATION COMPLETED")
+    # ---------------------------
+    # SUMMARY
+    # ---------------------------
+    print("\n🎉 JRAVIS PHASE-1 MONETIZATION COMPLETE")
     print("------------------------------------")
-    print("Gumroad →", gumroad_res["status"])
-    print("Payhip →", payhip_res["status"])
-    print("Printify →", printify_res["status"])
-    print("Newsletter →", newsletter_res["status"])
-    print("Funnel →", funnel_res["status"])
-    print("Multi-Marketplace →", marketplace_res["status"])
+    print("Gumroad →", gumroad_res.get("status"))
+    print("Payhip →", payhip_res.get("status"))
+    print("Printify →", printify_res.get("status"))
+    print("Newsletter →", newsletter_res.get("status"))
+    print("Funnel →", funnel_res.get("status"))
+    print("Marketplaces →", marketplace_res.get("status"))
     print("------------------------------------\n")
 
     return {
@@ -95,3 +128,4 @@ def run_all_streams_micro_engine(zip_path: str, template_code: str):
         "funnel": funnel_res,
         "marketplaces": marketplace_res
     }
+    
