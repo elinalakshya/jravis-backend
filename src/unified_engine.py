@@ -1,160 +1,98 @@
-# -----------------------------------------------------------
-# JRAVIS WORKER — FINAL VERSION (2025)
-# Fully automated:
-# Generate → Evaluate → Scale → Monetize
-# -----------------------------------------------------------
-
 import os
-import sys
-import time
-import random
-import requests
+import zipfile
+from pathlib import Path
 
-# Ensure required folders exist
-REQUIRED_FOLDERS = ["funnels", "factory_output", "publishers", "src"]
-for folder in REQUIRED_FOLDERS:
-    if not os.path.exists(folder):
-        print(f"📁 Creating missing folder: {folder}")
-        os.makedirs(folder, exist_ok=True)
-
-# Add ./src to Python path (Render fix)
-ENGINE_PATH = os.path.join(os.path.dirname(__file__), "src")
-if ENGINE_PATH not in sys.path:
-    print("🔧 Adding engine path:", ENGINE_PATH)
-    sys.path.append(ENGINE_PATH)
-
-# Import unified engine
-from unified_engine import run_all_streams_micro_engine
+# Import publisher modules
+from publishers.gumroad_publisher import publish_to_gumroad
+from publishers.payhip_publisher import publish_to_payhip
+from publishers.printify_publisher import publish_to_printify
+from publishers.newsletter_publisher import publish_to_newsletter
+from publishers.affiliate_funnel_publisher import create_affiliate_funnel
+from publishers.multi_marketplace_publisher import publish_to_marketplaces
 
 
-# -----------------------------------------------------------
-# Load Worker API Key
-# -----------------------------------------------------------
-WORKER_KEY = os.getenv("WORKER_API_KEY")
-if not WORKER_KEY:
-    print("❌ ERROR: WORKER_API_KEY missing in environment!")
-    sys.exit(1)
+# ---------------------------------------------------------
+# Extract ZIP → return extracted folder path
+# ---------------------------------------------------------
+def extract_zip(zip_path):
+    out_dir = f"unzipped/{Path(zip_path).stem}"
+    os.makedirs(out_dir, exist_ok=True)
 
-BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
+    with zipfile.ZipFile(zip_path, "r") as z:
+        z.extractall(out_dir)
 
-
-# Shared request headers
-HEADERS = {
-    "X-API-KEY": WORKER_KEY,
-    "Content-Type": "application/json"
-}
+    return out_dir
 
 
-# -----------------------------------------------------------
-# 1. Generate Template from Backend
-# -----------------------------------------------------------
-def generate_template():
-    print("\n[Factory] Generating template...")
+# ---------------------------------------------------------
+# MAIN ENGINE CALL
+# ---------------------------------------------------------
+def run_all_streams_micro_engine(zip_path: str, title: str):
+    print("\n⚙️ JRAVIS UNIFIED ENGINE STARTED")
+    print(f"📦 ZIP → {zip_path}")
+    print(f"📝 Title → {title}")
+
+    if not os.path.exists(zip_path):
+        print(f"[ERROR] ZIP not found: {zip_path}")
+        return {"status": "error", "reason": "zip_not_found"}
+
+    extracted = extract_zip(zip_path)
+
+    results = {}
+
+    # ------------------ Gumroad ------------------
     try:
-        r = requests.post(f"{BACKEND}/factory/generate", headers=HEADERS, timeout=20)
-        res = r.json()
-        print("[Factory] Response:", res)
-        return res
+        results["gumroad"] = publish_to_gumroad(title, zip_path)
+        print("[GUMROAD] OK")
     except Exception as e:
-        print("[Factory ERROR]", e)
-        return None
+        results["gumroad"] = str(e)
+        print("[GUMROAD ERROR]", e)
 
-
-# -----------------------------------------------------------
-# 2. Scale Template Variants
-# -----------------------------------------------------------
-def scale_template(base_name):
-    print(f"[Factory] Scaling {base_name}...")
+    # ------------------ Payhip ------------------
     try:
-        count = random.randint(2, 6)
-        r = requests.post(
-            f"{BACKEND}/factory/scale",
-            json={"base": base_name, "count": count},
-            headers=HEADERS,
-            timeout=20
-        )
-        res = r.json()
-        print("[Factory] Scaled:", res)
-        return res
+        results["payhip"] = publish_to_payhip(title, zip_path)
+        print("[PAYHIP] OK")
     except Exception as e:
-        print("[Scale ERROR]", e)
-        return None
+        results["payhip"] = str(e)
+        print("[PAYHIP ERROR]", e)
 
-
-# -----------------------------------------------------------
-# 3. Growth Evaluation (Winner Scoring)
-# -----------------------------------------------------------
-def evaluate_growth(template_name):
-    print(f"[Growth] Evaluating {template_name}...")
+    # ------------------ Printify ------------------
     try:
-        perf = {
-            "name": template_name,
-            "clicks": random.randint(50, 500),
-            "sales": random.randint(0, 20),
-            "trend": round(random.uniform(0.8, 1.6), 2)
-        }
-
-        r = requests.post(f"{BACKEND}/api/growth/evaluate", json=perf, timeout=15)
-        res = r.json()
-
-        print("[Growth] Evaluation:", res)
-        return res
-
+        results["printify"] = publish_to_printify(title, extracted)
+        print("[PRINTIFY] OK")
     except Exception as e:
-        print("[Growth ERROR]", e)
-        return None
+        results["printify"] = str(e)
+        print("[PRINTIFY ERROR]", e)
 
+    # ------------------ Newsletter ------------------
+    try:
+        results["newsletter"] = publish_to_newsletter(title, extracted)
+        print("[NEWSLETTER] OK")
+    except Exception as e:
+        results["newsletter"] = str(e)
+        print("[NEWSLETTER ERROR]", e)
 
-# -----------------------------------------------------------
-# 4. Run Full JRAVIS Cycle
-# -----------------------------------------------------------
-def run_cycle():
-    print("\n--------------------------------------")
-    print("🔥 RUNNING JRAVIS CYCLE (FINAL)")
-    print("--------------------------------------")
+    # ------------------ Funnel ------------------
+    try:
+        results["funnel"] = create_affiliate_funnel(title, extracted)
+        print("[FUNNEL] OK")
+    except Exception as e:
+        results["funnel"] = str(e)
+        print("[FUNNEL ERROR]", e)
 
-    # Step 1: Generate
-    template = generate_template()
-    if not template or "name" not in template:
-        print("❌ Template generation failed — retrying next loop")
-        return
+    # ------------------ Marketplaces ------------------
+    try:
+        results["marketplaces"] = publish_to_marketplaces(title, extracted)
+        print("[MARKETPLACES] OK")
+    except Exception as e:
+        results["marketplaces"] = str(e)
+        print("[MARKETPLACES ERROR]", e)
 
-    template_name = template["name"]
-    zip_path = template.get("zip")
-    print("⚡ Template Name:", template_name)
+    print("\n🎉 MONETIZATION COMPLETE\n")
 
-    # Step 2: Growth Score
-    growth = evaluate_growth(template_name)
-
-    # Step 3: Scaling logic
-    if growth and growth.get("winner"):
-        print("[Growth] WINNER → DOUBLE SCALE")
-        scale_template(template_name)
-        scale_template(template_name)
-    else:
-        print("[Growth] Normal Scale")
-        scale_template(template_name)
-
-    # Step 4: Monetization
-    if zip_path:
-        print("💰 Monetizing...")
-        run_all_streams_micro_engine(zip_path, template_name)
-    else:
-        print("⚠️ No ZIP provided, skipping monetization.")
-
-
-# -----------------------------------------------------------
-# MAIN LOOP
-# -----------------------------------------------------------
-def main():
-    print("🚀 JRAVIS WORKER STARTED — FULL AUTOMATION ENABLED")
-
-    while True:
-        run_cycle()
-        print("💤 Sleeping 3 seconds...")
-        time.sleep(3)
-
-
-# -----------------------------------------------------------
-if __name__ == "__main__":
-    main()
+    return {
+        "status": "completed",
+        "title": title,
+        "zip": zip_path,
+        "results": results,
+    }
