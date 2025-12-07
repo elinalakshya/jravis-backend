@@ -1,154 +1,56 @@
-# -----------------------------------------------------------
-# JRAVIS WORKER (FINAL VERSION — MATCHED TO NEW BACKEND)
-# -----------------------------------------------------------
-
 import os
 import time
 import requests
-import sys
 
-# ----------------------------
-# Add /src to Python path
-# ----------------------------
-SRC = os.path.join(os.getcwd(), "src")
-if SRC not in sys.path:
-    sys.path.append(SRC)
-
-from unified_engine import run_all_streams_micro_engine
-
-
-# ----------------------------
-# LOAD ENV VARIABLES
-# ----------------------------
 BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
-WORKER_KEY = os.getenv("WORKER_API_KEY", "")
+KEY = os.getenv("WORKER_API_KEY", "JRAVIS_2040_MASTER_KEY")
 
-print(f"🔧 BACKEND URL = {BACKEND}")
-print(f"🔧 WORKER KEY = {'SET' if WORKER_KEY else 'MISSING'}")
-
-
-# ----------------------------
-# BACKEND API CALL HELPERS
-# ----------------------------
-def api_post(path: str, payload: dict = None):
+def api_post(path):
     url = f"{BACKEND}{path}"
-    headers = {"X-API-KEY": WORKER_KEY}
+    r = requests.post(url, headers={"X-API-KEY": KEY})
+    return r.json()
 
-    try:
-        r = requests.post(url, json=payload, headers=headers)
-        return r.json() if r.status_code == 200 else None
-    except Exception as e:
-        print("[API POST ERROR]", e)
-        return None
-
-
-def api_get(path: str):
+def api_get(path):
     url = f"{BACKEND}{path}"
-    headers = {"X-API-KEY": WORKER_KEY}
+    r = requests.get(url, headers={"X-API-KEY": KEY})
+    return r.json()
 
-    try:
-        r = requests.get(url, headers=headers)
-        return r.json() if r.status_code == 200 else None
-    except Exception as e:
-        print("[API GET ERROR]", e)
-        return None
-
-
-# ----------------------------
-# PATH HELPERS
-# ----------------------------
-def ensure_local_folder():
-    os.makedirs("factory_output", exist_ok=True)
-    os.makedirs("funnels", exist_ok=True)
-
-
-def download_zip_if_missing(zip_path: str):
-    """Downloads ZIP from backend if local file doesn't exist."""
-
-    if os.path.exists(zip_path):
-        return True  # Already exists
-
+def download_zip(zip_path):
     url = f"{BACKEND}/files/{zip_path}"
-    print(f"[DOWNLOAD] Trying: {url}")
-
-    try:
-        r = requests.get(url)
-        if r.status_code != 200:
-            print("[DOWNLOAD ERROR]", r.text)
-            return False
-
-        os.makedirs(os.path.dirname(zip_path), exist_ok=True)
-
-        with open(zip_path, "wb") as f:
+    os.makedirs("factory_output", exist_ok=True)
+    r = requests.get(url)
+    if r.status_code == 200:
+        full_path = f"./{zip_path}"
+        with open(full_path, "wb") as f:
             f.write(r.content)
+        return full_path
+    return None
 
-        print("[DOWNLOAD] ZIP saved locally.")
-        return True
-
-    except Exception as e:
-        print("[DOWNLOAD EXCEPTION]", e)
-        return False
-
-
-# ----------------------------
-# CORE WORKER LOOP
-# ----------------------------
 def run_cycle():
-    print("\n🔥 RUNNING JRAVIS CYCLE (FINAL)")
-    print("--------------------------------------")
+    print("\n🔥 RUNNING CYCLE")
 
-    # 1) REQUEST NEW TEMPLATE
     task = api_post("/api/factory/generate")
-    if not task or "name" not in task:
-        print("❌ Template generation failed")
-        return
-
     name = task["name"]
-    zip_path = task["zip"]
+    zip_rel = task["zip"]
 
-    print("[Factory] Response:", task)
+    print("[Factory]", task)
 
-    # Ensure ZIP exists (download if needed)
-    if not download_zip_if_missing(zip_path):
-        print("❌ ZIP missing — cannot continue")
-        return
+    growth = api_get(f"/api/growth/evaluate/{name}")
+    print("[Growth]", growth)
 
-    # 2) GROWTH EVALUATION
-    score = api_post("/api/growth/evaluate", {"name": name})
-    print("[Growth] Evaluation:", score)
+    api_post(f"/api/factory/scale/{name}")
 
-    if not score:
-        print("❌ Growth evaluation failed — skipping scaling")
-        return
+    print("💾 Downloading ZIP…")
+    downloaded = download_zip(zip_rel)
+    print("ZIP:", downloaded)
 
-    # 3) SCALING LOGIC
-    if score.get("winner"):
-        print("[Growth] WINNER → DOUBLE SCALE")
-        api_post(f"/api/factory/scale/{name}")
-        api_post(f"/api/factory/scale/{name}")
-    else:
-        print("[Growth] Normal Scale")
-        api_post(f"/api/factory/scale/{name}")
+    print("💰 Monetization complete (simulated)")
 
-    # 4) MONETIZATION ENGINE
-    print("💰 Monetizing...")
-    try:
-        run_all_streams_micro_engine(zip_path, name, BACKEND)
-    except Exception as e:
-        print("❌ Monetization Engine ERROR:", e)
-
-
-# ----------------------------
-# MAIN
-# ----------------------------
 def main():
-    print("🚀 JRAVIS WORKER STARTED — FINAL MODE")
-    ensure_local_folder()
-
+    print("🚀 WORKER ONLINE")
     while True:
         run_cycle()
-        time.sleep(2)
-
+        time.sleep(3)
 
 if __name__ == "__main__":
     main()
