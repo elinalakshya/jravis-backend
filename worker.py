@@ -1,6 +1,5 @@
 # -----------------------------------------------------------
-# JRAVIS WORKER — FULL AUTOMATION ENGINE (FIXED VERSION)
-# Factory → Growth → Scaling → Monetization
+# FINAL JRAVIS WORKER (STRUCTURE SAFE + ROUTE SAFE)
 # -----------------------------------------------------------
 
 import os
@@ -10,151 +9,116 @@ import random
 import requests
 
 # -----------------------------------------------------------
-# AUTO-CREATE REQUIRED DIRECTORIES
+# Ensure required folders exist
 # -----------------------------------------------------------
-REQUIRED_FOLDERS = ["funnels", "factory_output", "publishers", "src"]
-for folder in REQUIRED_FOLDERS:
-    if not os.path.exists(folder):
-        print(f"📁 Creating missing folder: {folder}")
-        os.makedirs(folder, exist_ok=True)
+for f in ["funnels", "factory_output"]:
+    if not os.path.exists(f):
+        os.makedirs(f, exist_ok=True)
 
 # -----------------------------------------------------------
-# FIX PYTHON PATH FOR RENDER
+# Add /src to Python PATH
 # -----------------------------------------------------------
-ENGINE_PATH = os.path.join(os.path.dirname(__file__), "src")
-if ENGINE_PATH not in sys.path:
-    print("🔧 Adding engine path:", ENGINE_PATH)
-    sys.path.append(ENGINE_PATH)
+ENGINE_DIR = os.path.join(os.path.dirname(__file__), "src")
+sys.path.append(ENGINE_DIR)
 
-# IMPORT ENGINE
 from unified_engine import run_all_streams_micro_engine
 
-
 # -----------------------------------------------------------
-# CONFIG VARIABLES
+# Backend URL
 # -----------------------------------------------------------
 BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
-WORKER_KEY = os.getenv("WORKER_API_KEY", "NO_KEY_SET")
+API_KEY = os.getenv("REPORT_API_CODE", "")
 
-HEADERS = {"X-API-KEY": WORKER_KEY}
-
+HEADERS = {"X-API-KEY": API_KEY}
 
 # -----------------------------------------------------------
-# 1) Generate Template ZIP
+# Factory: Generate
 # -----------------------------------------------------------
 def generate_template():
-    print("\n[Factory] Generating new template...")
+    print("\n[Factory] Generating template...")
     try:
-        res = requests.post(f"{BACKEND}/factory/generate", headers=HEADERS)
-        data = res.json()
-        print("[Factory] Response:", data)
-        return data
-    except Exception as e:
-        print("[Factory] ERROR:", e)
-        return None
-
-
-# -----------------------------------------------------------
-# 2) Scale Template Variants
-# -----------------------------------------------------------
-def scale_template(base_name):
-    print(f"[Factory] Scaling template: {base_name}")
-    try:
-        count = random.randint(2, 6)
-
         res = requests.post(
-            f"{BACKEND}/factory/scale",
-            json={"base": base_name, "count": count},
+            f"{BACKEND}/api/factory/generate",
             headers=HEADERS
-        )
-
-        data = res.json()
-        print("[Factory] Scale Response:", data)
-        return data
-
+        ).json()
+        print("[Factory] Response:", res)
+        return res
     except Exception as e:
-        print("[Factory] ERROR scaling:", e)
+        print("[Factory ERROR]:", e)
         return None
 
+# -----------------------------------------------------------
+# Factory: Scale
+# -----------------------------------------------------------
+def scale_template(base):
+    try:
+        res = requests.post(
+            f"{BACKEND}/api/factory/scale",
+            headers=HEADERS,
+            json={"base": base, "count": random.randint(2, 6)}
+        ).json()
+        print("[Factory] Scaled:", res)
+    except Exception as e:
+        print("[Scale ERROR]:", e)
 
 # -----------------------------------------------------------
-# 3) Growth Evaluation
+# Growth: Score
 # -----------------------------------------------------------
-def evaluate_growth(template_name):
-    print("[Growth] Evaluating performance...")
-
+def growth_score(name):
     perf = {
-        "name": template_name,
+        "name": name,
         "clicks": random.randint(50, 500),
         "sales": random.randint(0, 20),
-        "trend": round(random.uniform(0.8, 1.6), 2),
+        "trend": round(random.uniform(0.8, 1.4), 2)
     }
-
-    try:
-        r = requests.post(
-            f"{BACKEND}/growth/evaluate",
-            json=perf,
-            headers=HEADERS
-        )
-        data = r.json()
-        print("[Growth] Response:", data)
-        return data
-    except Exception as e:
-        print("[Growth ERROR]:", e)
-        return None
-
+    res = requests.post(
+        f"{BACKEND}/api/growth/evaluate",
+        headers=HEADERS,
+        json=perf
+    ).json()
+    print("[Growth] Evaluation:", res)
+    return res
 
 # -----------------------------------------------------------
-# 4) FULL CYCLE EXECUTION
+# MAIN CYCLE
 # -----------------------------------------------------------
 def run_cycle():
-    print("\n--------------------------------------")
-    print("🔥 RUNNING JRAVIS CYCLE")
+    print("\n🔥 RUNNING JRAVIS CYCLE (DEBUG)")
     print("--------------------------------------")
 
-    # Step 1 — GENERATE TEMPLATE
-    template = generate_template()
-    if not template or "name" not in template:
-        print("❌ Failed to generate template — retrying next cycle")
+    # Generate
+    t = generate_template()
+    if not t or "name" not in t:
+        print("⚠️ Template generation failed")
         return
 
-    base_name = template["name"]
-    zip_path = template.get("zip")
+    name = t["name"]
+    zip_path = t.get("zip")
 
-    # Step 2 — GROWTH SCORING
-    growth = evaluate_growth(base_name)
+    # Growth Score
+    g = growth_score(name)
 
-    # Step 3 — SCALING
-    if growth and growth.get("winner"):
-        print("[Growth] WINNER → Double scaling mode!")
-        scale_template(base_name)
-        scale_template(base_name)
+    # Scaling
+    if g.get("winner"):
+        print("[Growth] WINNER → DOUBLE SCALE")
+        scale_template(name)
+        scale_template(name)
     else:
-        print("[Growth] Normal scaling...")
-        scale_template(base_name)
+        print("[Growth] Normal Scale")
+        scale_template(name)
 
-    # Step 4 — MONETIZATION ENGINE
+    # Monetization
     if zip_path:
-        print("\n💰 Running Monetization Engine...")
-        run_all_streams_micro_engine(zip_path, base_name)
-    else:
-        print("⚠️ No ZIP found → monetization skipped")
+        print("\n💰 Monetizing...")
+        run_all_streams_micro_engine(zip_path, name)
 
 
 # -----------------------------------------------------------
-# MAIN LOOP
+# Worker Loop
 # -----------------------------------------------------------
-def main():
-    print("🚀 JRAVIS WORKER STARTED — FULL AUTO MODE")
+if __name__ == "__main__":
+    print("🚀 JRAVIS WORKER ONLINE — FULL AUTOMATION MODE")
 
     while True:
         run_cycle()
-
-        # Heartbeat every 10 minutes
-        for i in range(6):
-            print(f"💓 Heartbeat ({i+1}/6)")
-            time.sleep(100)
-
-
-if __name__ == "__main__":
-    main()
+        time.sleep(3)
