@@ -1,141 +1,160 @@
 # -----------------------------------------------------------
-# JRAVIS Unified Monetization Engine (FINAL VERSION)
-# Downloads ZIP → Uploads to all platforms → Generates funnels
+# JRAVIS WORKER — FINAL VERSION (2025)
+# Fully automated:
+# Generate → Evaluate → Scale → Monetize
 # -----------------------------------------------------------
 
 import os
+import sys
+import time
+import random
 import requests
 
-from publishers.gumroad_publisher import upload_to_gumroad
-from publishers.payhip_publisher import upload_to_payhip
-from publishers.printify_publisher import upload_to_printify
-from publishers.newsletter_content_publisher import send_newsletter
-from publishers.affiliate_funnel_publisher import create_affiliate_funnel
-from publishers.multi_marketplace_publisher import publish_to_marketplaces
+# Ensure required folders exist
+REQUIRED_FOLDERS = ["funnels", "factory_output", "publishers", "src"]
+for folder in REQUIRED_FOLDERS:
+    if not os.path.exists(folder):
+        print(f"📁 Creating missing folder: {folder}")
+        os.makedirs(folder, exist_ok=True)
 
+# Add ./src to Python path (Render fix)
+ENGINE_PATH = os.path.join(os.path.dirname(__file__), "src")
+if ENGINE_PATH not in sys.path:
+    print("🔧 Adding engine path:", ENGINE_PATH)
+    sys.path.append(ENGINE_PATH)
 
-BACKEND_URL = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
+# Import unified engine
+from unified_engine import run_all_streams_micro_engine
 
 
 # -----------------------------------------------------------
-# DOWNLOAD ZIP FROM BACKEND
+# Load Worker API Key
 # -----------------------------------------------------------
-def download_zip(zip_path: str) -> str:
-    """
-    JRAVIS Backend returns ZIP paths like:
-        factory_output/template-1234.zip
+WORKER_KEY = os.getenv("WORKER_API_KEY")
+if not WORKER_KEY:
+    print("❌ ERROR: WORKER_API_KEY missing in environment!")
+    sys.exit(1)
 
-    Worker must download:
-        https://jravis-backend.onrender.com/factory_output/template-1234.zip
-    """
+BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
 
-    url = f"{BACKEND_URL}/{zip_path}"
-    local_file = f"/tmp/{os.path.basename(zip_path)}"
 
-    print(f"[DOWNLOAD] Fetching: {url}")
+# Shared request headers
+HEADERS = {
+    "X-API-KEY": WORKER_KEY,
+    "Content-Type": "application/json"
+}
 
+
+# -----------------------------------------------------------
+# 1. Generate Template from Backend
+# -----------------------------------------------------------
+def generate_template():
+    print("\n[Factory] Generating template...")
     try:
-        r = requests.get(url, timeout=20)
-        if r.status_code != 200:
-            print("[DOWNLOAD ERROR]", r.text)
-            return None
-
-        with open(local_file, "wb") as f:
-            f.write(r.content)
-
-        print(f"[DOWNLOAD] Saved → {local_file}")
-        return local_file
-
+        r = requests.post(f"{BACKEND}/factory/generate", headers=HEADERS, timeout=20)
+        res = r.json()
+        print("[Factory] Response:", res)
+        return res
     except Exception as e:
-        print("[DOWNLOAD ERROR]", e)
+        print("[Factory ERROR]", e)
         return None
 
 
 # -----------------------------------------------------------
-# Extract Title from ZIP
+# 2. Scale Template Variants
 # -----------------------------------------------------------
-def extract_title(zip_path: str) -> str:
-    base = os.path.basename(zip_path)
-    name = base.replace(".zip", "").replace("_", " ").title()
-    return name
+def scale_template(base_name):
+    print(f"[Factory] Scaling {base_name}...")
+    try:
+        count = random.randint(2, 6)
+        r = requests.post(
+            f"{BACKEND}/factory/scale",
+            json={"base": base_name, "count": count},
+            headers=HEADERS,
+            timeout=20
+        )
+        res = r.json()
+        print("[Factory] Scaled:", res)
+        return res
+    except Exception as e:
+        print("[Scale ERROR]", e)
+        return None
 
 
 # -----------------------------------------------------------
-# Main Unified Engine
+# 3. Growth Evaluation (Winner Scoring)
 # -----------------------------------------------------------
-def run_all_streams_micro_engine(zip_path: str, template_name: str):
-    print("\n⚙️ JRAVIS UNIFIED ENGINE STARTED")
-    print("📦 Input ZIP →", zip_path)
+def evaluate_growth(template_name):
+    print(f"[Growth] Evaluating {template_name}...")
+    try:
+        perf = {
+            "name": template_name,
+            "clicks": random.randint(50, 500),
+            "sales": random.randint(0, 20),
+            "trend": round(random.uniform(0.8, 1.6), 2)
+        }
 
-    # 1. Download actual ZIP file from backend
-    local_zip = download_zip(zip_path)
-    if not local_zip:
-        print("❌ ZIP Download Failed — Skipping monetization.")
+        r = requests.post(f"{BACKEND}/api/growth/evaluate", json=perf, timeout=15)
+        res = r.json()
+
+        print("[Growth] Evaluation:", res)
+        return res
+
+    except Exception as e:
+        print("[Growth ERROR]", e)
+        return None
+
+
+# -----------------------------------------------------------
+# 4. Run Full JRAVIS Cycle
+# -----------------------------------------------------------
+def run_cycle():
+    print("\n--------------------------------------")
+    print("🔥 RUNNING JRAVIS CYCLE (FINAL)")
+    print("--------------------------------------")
+
+    # Step 1: Generate
+    template = generate_template()
+    if not template or "name" not in template:
+        print("❌ Template generation failed — retrying next loop")
         return
 
-    title = extract_title(zip_path)
-    print("📝 Title →", title)
+    template_name = template["name"]
+    zip_path = template.get("zip")
+    print("⚡ Template Name:", template_name)
 
-    # -------------------------------------------------------
-    # 2. Gumroad Upload
-    # -------------------------------------------------------
-    print("\n[GUMROAD] Uploading", title, "...")
-    gumroad_res = upload_to_gumroad(local_zip, title)
+    # Step 2: Growth Score
+    growth = evaluate_growth(template_name)
 
-    gumroad_link = None
-    try:
-        gumroad_link = gumroad_res["response"]["product"]["short_url"]
-    except:
-        gumroad_link = "https://gumroad.com"
+    # Step 3: Scaling logic
+    if growth and growth.get("winner"):
+        print("[Growth] WINNER → DOUBLE SCALE")
+        scale_template(template_name)
+        scale_template(template_name)
+    else:
+        print("[Growth] Normal Scale")
+        scale_template(template_name)
 
-    # -------------------------------------------------------
-    # 3. Payhip Upload
-    # -------------------------------------------------------
-    print("\n[PAYHIP] Uploading", title, "...")
-    payhip_res = upload_to_payhip(local_zip, title)
+    # Step 4: Monetization
+    if zip_path:
+        print("💰 Monetizing...")
+        run_all_streams_micro_engine(zip_path, template_name)
+    else:
+        print("⚠️ No ZIP provided, skipping monetization.")
 
-    # -------------------------------------------------------
-    # 4. Printify Upload
-    # -------------------------------------------------------
-    print("\n[PRINTIFY] Uploading POD asset for", title, "...")
-    printify_res = upload_to_printify(local_zip, title)
 
-    # -------------------------------------------------------
-    # 5. Newsletter Blast
-    # -------------------------------------------------------
-    print("\n[NEWSLETTER] Sending broadcast for", title, "...")
-    newsletter_res = send_newsletter(title, gumroad_link)
+# -----------------------------------------------------------
+# MAIN LOOP
+# -----------------------------------------------------------
+def main():
+    print("🚀 JRAVIS WORKER STARTED — FULL AUTOMATION ENABLED")
 
-    # -------------------------------------------------------
-    # 6. Funnel Generation
-    # -------------------------------------------------------
-    print("\n[FUNNEL] Creating affiliate funnel for", title, "...")
-    funnel_res = create_affiliate_funnel(title, gumroad_link)
+    while True:
+        run_cycle()
+        print("💤 Sleeping 3 seconds...")
+        time.sleep(3)
 
-    # -------------------------------------------------------
-    # 7. Multi-Marketplace
-    # -------------------------------------------------------
-    print("\n[MARKETPLACES] Publishing", title, "to external networks...")
-    marketplace_res = publish_to_marketplaces(local_zip, title)
 
-    # -------------------------------------------------------
-    # Summary Log
-    # -------------------------------------------------------
-    print("\n🎉 MONETIZATION COMPLETE")
-    print("--------------------------------------")
-    print("Gumroad →", gumroad_res.get("status"))
-    print("Payhip →", payhip_res.get("status"))
-    print("Printify →", printify_res.get("status"))
-    print("Newsletter →", newsletter_res.get("status"))
-    print("Funnel →", funnel_res.get("status"))
-    print("Marketplaces →", marketplace_res.get("status"))
-    print("--------------------------------------\n")
-
-    return {
-        "gumroad": gumroad_res,
-        "payhip": payhip_res,
-        "printify": printify_res,
-        "newsletter": newsletter_res,
-        "funnel": funnel_res,
-        "marketplaces": marketplace_res
-    }
+# -----------------------------------------------------------
+if __name__ == "__main__":
+    main()
