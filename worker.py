@@ -1,10 +1,18 @@
 # -----------------------------------------------------------
+# FIX PYTHON PATH FOR RENDER (MUST BE FIRST)
+# -----------------------------------------------------------
+import os
+import sys
+
+ENGINE_PATH = os.path.join(os.path.dirname(__file__), "src")
+if ENGINE_PATH not in sys.path:
+    print("🔧 Adding engine path:", ENGINE_PATH)
+    sys.path.append(ENGINE_PATH)
+
+# -----------------------------------------------------------
 # AUTO-CREATE REQUIRED DIRECTORIES
 # -----------------------------------------------------------
-
-import os
-
-REQUIRED_FOLDERS = ["funnels", "factory_output", "publishers", "src"]
+REQUIRED_FOLDERS = ["funnels", "factory_output"]
 
 for folder in REQUIRED_FOLDERS:
     if not os.path.exists(folder):
@@ -12,20 +20,18 @@ for folder in REQUIRED_FOLDERS:
         os.makedirs(folder, exist_ok=True)
 
 # -----------------------------------------------------------
+# IMPORT ENGINE (ONLY ONCE)
+# -----------------------------------------------------------
+from unified_engine import run_all_streams_micro_engine
+
+# -----------------------------------------------------------
 # JRAVIS WORKER — FULL AUTOMATION MODE
-# Template Creation → Growth Evaluation → Scaling → Monetization
 # -----------------------------------------------------------
 
-import os
 import time
 import random
 import requests
 
-# ENGINE IMPORT (works correctly now)
-from unified_engine import run_all_streams_micro_engine
-
-
-# BACKEND URL
 BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
 
 
@@ -92,7 +98,6 @@ def run_cycle():
     print("🔥 RUNNING FULL JRAVIS CYCLE")
     print("----------------------------------------")
 
-    # STEP 1 — Generate Template
     template = generate_template()
     if not template or "name" not in template:
         print("❌ Template generation failed — Skipping")
@@ -101,19 +106,16 @@ def run_cycle():
     base_name = template["name"]
     zip_path = template.get("zip")
 
-    # STEP 2 — Growth Scoring
     growth = evaluate_growth(base_name)
 
-    # STEP 3 — Scaling
     if growth and growth.get("winner"):
         print("[Growth] WINNER — Double Scaling Mode Activated!")
         scale_template(base_name)
-        scale_template(base_name)  # Double scaling for winners
+        scale_template(base_name)
     else:
         print("[Growth] Normal scaling")
         scale_template(base_name)
 
-    # STEP 4 — Monetization Engine
     if zip_path:
         print("\n💰 Starting Monetization Engine...")
         run_all_streams_micro_engine(zip_path, base_name)
@@ -122,7 +124,7 @@ def run_cycle():
 
 
 # ------------------------------------------------------
-# 5) ENTRY POINT — MAIN LOOP
+# 5) MAIN LOOP
 # ------------------------------------------------------
 def main():
     print("🚀 JRAVIS WORKER STARTED — FULL AUTOMATION ENABLED")
@@ -130,12 +132,10 @@ def main():
     while True:
         run_cycle()
 
-        # Heartbeat every 10 minutes (100s × 6 = 600s)
         for i in range(6):
             print(f"💓 Heartbeat ({i+1}/6)")
             time.sleep(100)
 
 
-# ------------------------------------------------------
 if __name__ == "__main__":
     main()
