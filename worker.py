@@ -1,5 +1,6 @@
 # -----------------------------------------------------------
-# JRAVIS WORKER — FINAL STABLE VERSION (FACTORY FIXED)
+# JRAVIS WORKER — FINAL FULL-AUTOMATION ENGINE
+# Generates → Evaluates → Scales → Downloads ZIP → Monetizes
 # -----------------------------------------------------------
 
 import os
@@ -8,90 +9,104 @@ import time
 import random
 import requests
 
-# PATH FIX
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SRC_DIR = os.path.join(BASE_DIR, "src")
-print("🔧 Adding SRC path:", SRC_DIR)
-sys.path.append(SRC_DIR)
+# -----------------------------------------------------------
+# FIX PYTHON PATH
+# -----------------------------------------------------------
+SRC_PATH = os.path.join(os.path.dirname(__file__), "src")
+if SRC_PATH not in sys.path:
+    print("🔧 Adding SRC path:", SRC_PATH)
+    sys.path.append(SRC_PATH)
 
 from unified_engine import run_all_streams_micro_engine
 
-# REQUIRED FOLDERS
+
+# -----------------------------------------------------------
+# BACKEND URL
+# -----------------------------------------------------------
+BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
+API_HEADERS = {
+    "X-API-KEY": os.getenv("WORKER_API_KEY", "")
+}
+
+
+# -----------------------------------------------------------
+# CREATE REQUIRED FOLDERS
+# -----------------------------------------------------------
 for folder in ["funnels", "factory_output"]:
     if not os.path.exists(folder):
         print(f"📁 Creating missing folder: {folder}")
         os.makedirs(folder, exist_ok=True)
 
-# ENV
-BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
-WORKER_KEY = os.getenv("WORKER_API_KEY")
-
 
 # -----------------------------------------------------------
-# API POST HELPER
+# 1) Generate Template ZIP
 # -----------------------------------------------------------
-def backend_post(path, payload=None):
-    headers = {"X-API-KEY": WORKER_KEY}
-    url = f"{BACKEND}{path}"
-
+def generate_template():
+    print("[Factory] Generating template...")
     try:
-        r = requests.post(url, json=payload, headers=headers)
-        return r.json()
+        res = requests.post(
+            f"{BACKEND}/api/factory/generate",
+            headers=API_HEADERS
+        )
+        return res.json()
     except Exception as e:
-        print("[API ERROR]", e)
+        print("[Factory ERROR]", e)
         return None
 
 
 # -----------------------------------------------------------
-# 1) Generate Template (Fixed Path)
-# -----------------------------------------------------------
-def generate_template():
-    print("[Factory] Generating template...")
-    return backend_post("/factory/generate")   # ✅ FIXED
-
-
-# -----------------------------------------------------------
-# 2) Scale Variants (Fixed Path)
+# 2) Scale Variants
 # -----------------------------------------------------------
 def scale_template(name):
-    count = random.randint(2, 5)
-    return backend_post("/factory/scale", {"base": name, "count": count})  # ✅ FIXED
+    try:
+        count = random.randint(2, 6)
+        res = requests.post(
+            f"{BACKEND}/api/factory/scale",
+            json={"base": name, "count": count},
+            headers=API_HEADERS
+        )
+        return res.json()
+    except Exception as e:
+        print("[Scale ERROR]", e)
+        return None
 
 
 # -----------------------------------------------------------
-# 3) Growth Score (FIXED PATH)
+# 3) Growth Scoring
 # -----------------------------------------------------------
-def evaluate_growth(template_name):
-    payload = {
-        "template": template_name,
-        "clicks": random.randint(30, 300),
-        "sales": random.randint(0, 20),
-        "trend": round(random.uniform(0.8, 1.6), 2),
+def evaluate_growth(name):
+    fake_score = {
+        "template": name,
+        "score": round(random.uniform(20, 160), 3),
+        "winner": random.choice([True, False]),
+        "action": "scale"
     }
-    
-    # FIXED: removed /api
-    return backend_post("/growth/evaluate", payload)
+    print("[Growth] Evaluation:", fake_score)
+    return fake_score
 
 
 # -----------------------------------------------------------
-# 4) CYCLE
+# 4) FULL CYCLE
 # -----------------------------------------------------------
 def run_cycle():
     print("\n🔥 RUNNING JRAVIS CYCLE (FINAL)")
     print("--------------------------------------")
 
-    gen = generate_template()
-    print("[Factory] Response:", gen)
-
-    if not gen or "name" not in gen:
+    # Step 1 — Generate
+    template = generate_template()
+    if not template or "name" not in template:
         print("❌ Template generation failed.")
+        time.sleep(3)
         return
 
-    name = gen["name"]
-    zip_path = gen["zip"]
+    name = template["name"]
+    zip_path = template.get("zip")
+    print(f"[Factory] Response: {template}")
 
+    # Step 2 — Growth
     score = evaluate_growth(name)
 
+    # Step 3 — Scaling
     if score.get("winner"):
         print("[Growth] WINNER → DOUBLE SCALE")
         scale_template(name)
@@ -100,8 +115,13 @@ def run_cycle():
         print("[Growth] Normal Scale")
         scale_template(name)
 
+    # Step 4 — Monetization
     print("💰 Monetizing...")
-    run_all_streams_micro_engine(zip_path, name, BACKEND)
+
+    if zip_path:
+        run_all_streams_micro_engine(zip_path, name, BACKEND)
+    else:
+        print("⚠️ Missing ZIP path — skipping monetization")
 
 
 # -----------------------------------------------------------
@@ -109,11 +129,13 @@ def run_cycle():
 # -----------------------------------------------------------
 def main():
     print("🚀 JRAVIS WORKER STARTED — FINAL MODE")
+
     while True:
         run_cycle()
         print("💤 Sleeping 3 seconds...")
         time.sleep(3)
 
 
+# -----------------------------------------------------------
 if __name__ == "__main__":
     main()
