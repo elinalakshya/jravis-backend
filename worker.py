@@ -21,7 +21,6 @@ WORKER_KEY = os.getenv("WORKER_API_KEY")
 
 print("🔧 BACKEND =", BACKEND)
 
-
 def get_task():
     url = f"{BACKEND}/api/factory/generate"
     headers = {"X-API-KEY": WORKER_KEY}
@@ -31,7 +30,6 @@ def get_task():
     except Exception as e:
         print("[TASK ERROR]", e)
         return None
-
 
 def scale_task(name):
     url = f"{BACKEND}/api/factory/scale/{name}"
@@ -43,7 +41,6 @@ def scale_task(name):
         print("[SCALE ERROR]", e)
         return None
 
-
 def evaluate_growth(name):
     url = f"{BACKEND}/api/growth/evaluate/{name}"
     headers = {"X-API-KEY": WORKER_KEY}
@@ -53,7 +50,6 @@ def evaluate_growth(name):
     except Exception as e:
         print("[GROWTH ERROR]", e)
         return None
-
 
 def run_cycle():
     print("🔥 RUNNING JRAVIS CYCLE (FINAL)")
@@ -69,11 +65,11 @@ def run_cycle():
     zip_path = task["zip"]
 
     print("[Factory] Response:", task)
+    if not score:
+    print("❌ Growth evaluation returned None — using default scoring")
+    score = {"template": name, "score": 50, "winner": False, "action": "pause"}
 
-    score = evaluate_growth(name)
-    print("[Growth] Evaluation:", score)
-
-    if score.get("winner"):
+if score.get("winner"):
         print("[Growth] WINNER → DOUBLE SCALE")
         scale_task(name)
         scale_task(name)
@@ -90,7 +86,6 @@ def run_cycle():
     except Exception as e:
         print("❌ Monetization Engine ERROR:", e)
 
-
 def main():
     print("🚀 JRAVIS WORKER STARTED — FINAL MODE")
 
@@ -100,7 +95,6 @@ def main():
     while True:
         run_cycle()
         time.sleep(2)
-
 
 if __name__ == "__main__":
     main()
