@@ -1,98 +1,66 @@
 import os
-import zipfile
-from pathlib import Path
+import requests
 
-# Import publisher modules
 from publishers.gumroad_publisher import publish_to_gumroad
 from publishers.payhip_publisher import publish_to_payhip
 from publishers.printify_publisher import publish_to_printify
-from publishers.newsletter_publisher import publish_to_newsletter
+from publishers.newsletter_publisher import send_newsletter
 from publishers.affiliate_funnel_publisher import create_affiliate_funnel
 from publishers.multi_marketplace_publisher import publish_to_marketplaces
 
 
-# ---------------------------------------------------------
-# Extract ZIP → return extracted folder path
-# ---------------------------------------------------------
-def extract_zip(zip_path):
-    out_dir = f"unzipped/{Path(zip_path).stem}"
-    os.makedirs(out_dir, exist_ok=True)
-
-    with zipfile.ZipFile(zip_path, "r") as z:
-        z.extractall(out_dir)
-
-    return out_dir
+BACKEND = os.getenv("BACKEND_URL", "https://jravis-backend.onrender.com")
 
 
-# ---------------------------------------------------------
-# MAIN ENGINE CALL
-# ---------------------------------------------------------
-def run_all_streams_micro_engine(zip_path: str, title: str):
+def extract_title(zip_path):
+    return os.path.basename(zip_path).replace(".zip", "").title()
+
+
+def run_all_streams_micro_engine(zip_path, template_name):
     print("\n⚙️ JRAVIS UNIFIED ENGINE STARTED")
-    print(f"📦 ZIP → {zip_path}")
+    print(f"📦 Input ZIP → {zip_path}")
+
+    title = extract_title(zip_path)
     print(f"📝 Title → {title}")
 
-    if not os.path.exists(zip_path):
-        print(f"[ERROR] ZIP not found: {zip_path}")
-        return {"status": "error", "reason": "zip_not_found"}
+    full_url = f"{BACKEND}/{zip_path}"
 
-    extracted = extract_zip(zip_path)
+    print("[DOWNLOAD] Fetching:", full_url)
+    r = requests.get(full_url)
 
-    results = {}
+    if r.status_code != 200:
+        print("[DOWNLOAD ERROR]", r.text)
+        print("❌ ZIP Download Failed — Skipping monetization.")
+        return
 
-    # ------------------ Gumroad ------------------
-    try:
-        results["gumroad"] = publish_to_gumroad(title, zip_path)
-        print("[GUMROAD] OK")
-    except Exception as e:
-        results["gumroad"] = str(e)
-        print("[GUMROAD ERROR]", e)
+    local_zip = f"/tmp/{template_name}.zip"
+    with open(local_zip, "wb") as f:
+        f.write(r.content)
 
-    # ------------------ Payhip ------------------
-    try:
-        results["payhip"] = publish_to_payhip(title, zip_path)
-        print("[PAYHIP] OK")
-    except Exception as e:
-        results["payhip"] = str(e)
-        print("[PAYHIP ERROR]", e)
+    # 1) Gumroad
+    gum = publish_to_gumroad(local_zip, title)
 
-    # ------------------ Printify ------------------
-    try:
-        results["printify"] = publish_to_printify(title, extracted)
-        print("[PRINTIFY] OK")
-    except Exception as e:
-        results["printify"] = str(e)
-        print("[PRINTIFY ERROR]", e)
+    # 2) Payhip
+    pay = publish_to_payhip(local_zip, title)
 
-    # ------------------ Newsletter ------------------
-    try:
-        results["newsletter"] = publish_to_newsletter(title, extracted)
-        print("[NEWSLETTER] OK")
-    except Exception as e:
-        results["newsletter"] = str(e)
-        print("[NEWSLETTER ERROR]", e)
+    # 3) Printify
+    pri = publish_to_printify(local_zip, title)
 
-    # ------------------ Funnel ------------------
-    try:
-        results["funnel"] = create_affiliate_funnel(title, extracted)
-        print("[FUNNEL] OK")
-    except Exception as e:
-        results["funnel"] = str(e)
-        print("[FUNNEL ERROR]", e)
+    # 4) Newsletter
+    news = send_newsletter(title)
 
-    # ------------------ Marketplaces ------------------
-    try:
-        results["marketplaces"] = publish_to_marketplaces(title, extracted)
-        print("[MARKETPLACES] OK")
-    except Exception as e:
-        results["marketplaces"] = str(e)
-        print("[MARKETPLACES ERROR]", e)
+    # 5) Funnel
+    funnel = create_affiliate_funnel(title)
 
-    print("\n🎉 MONETIZATION COMPLETE\n")
+    # 6) Multi-marketplace
+    market = publish_to_marketplaces(local_zip, title)
 
+    print("🎉 MONETIZATION COMPLETE")
     return {
-        "status": "completed",
-        "title": title,
-        "zip": zip_path,
-        "results": results,
+        "gumroad": gum,
+        "payhip": pay,
+        "printify": pri,
+        "newsletter": news,
+        "funnel": funnel,
+        "marketplaces": market
     }
