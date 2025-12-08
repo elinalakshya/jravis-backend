@@ -16,7 +16,7 @@ from jravis_backend.src.router_uploader import router as uploader_router
 from jravis_backend.src.router_viral import router as viral_router
 from jravis_backend.src.router_intelligence import router as intelligence_router
 
-
+app.include_router(growth_router, prefix="/api")
 app = FastAPI(title=settings.PROJECT_NAME)
 
 # --------------------------- CORS ---------------------------
