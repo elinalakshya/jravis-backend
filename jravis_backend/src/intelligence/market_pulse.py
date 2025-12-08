@@ -1,4 +1,5 @@
 # jravis_backend/src/intelligence/market_pulse.py
+
 import os
 from openai import OpenAI
 
@@ -13,7 +14,8 @@ def get_market_pulse():
     if not api_key:
         return {"error": "OPENAI_API_KEY not set on server"}
 
-    # Create the client INSIDE the function to avoid Render proxy injection
+    # Create the client INSIDE the function
+    # This avoids Render injecting PROXY settings into OpenAI client creation
     client = OpenAI(api_key=api_key)
 
     prompt = """
