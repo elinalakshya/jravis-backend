@@ -39,7 +39,7 @@ localPort = 10000
 externalPort = 3000
 
 [nix]
-packages = ["freetype", "gitFull", "glibcLocales", "google-cloud-sdk", "jq", "mailutils", "nano", "playwright-driver", "zulu", "python39Packages.bootstrapped-pip", "imagemagick6", "docker-client", "dos2unix", "psmisc", "lsof"]
+packages = ["freetype", "gitFull", "glibcLocales", "google-cloud-sdk", "jq", "mailutils", "nano", "playwright-driver", "zulu", "python39Packages.bootstrapped-pip", "imagemagick6", "docker-client", "dos2unix", "psmisc", "lsof", "fltk"]
 
 [agent]
 expertMode = true
