@@ -1,6 +1,6 @@
 # src/router_auth.py
 from fastapi import APIRouter, Depends
-from utils.security import verify_api_key
+from jravis_backend.utils.security import verify_api_key
 
 router = APIRouter()
 

@@ -1,7 +1,7 @@
 # src/router_streams.py
 from fastapi import APIRouter, Depends
-from utils.security import verify_api_key
-from utils.file_reader import get_latest_file
+from jravis_backend.utils.security import verify_api_key
+from jravis_backend.utils.file_reader import get_latest_file
 
 router = APIRouter()
 
