@@ -36,5 +36,34 @@ async def verify_api_key(request: Request, call_next):
     return await call_next(request)
 
 # --------------------- ROUTERS ------------------------
-app.include_router(health_router)
+
+# Health
+app.include_router(health_router, prefix="")
+
+# Factory
+app.include_router(factory_router, prefix="/api/factory")
+
+# Growth
+app.include_router(growth_router, prefix="/api/growth")
+
+# Files
+app.include_router(files_router, prefix="/files")
+
+# Streams
+app.include_router(streams_router, prefix="/api/streams")
+
+# Revenue
+app.include_router(revenue_router, prefix="/api/revenue")
+
+# Pricing
+app.include_router(pricing_router, prefix="/api/pricing")
+
+# Uploader
+app.include_router(uploader_router, prefix="/api/upload")
+
+# Viral
+app.include_router(viral_router, prefix="/api/viral")
+
+# Intelligence
+app.include_router(intelligence_router, prefix="/api/intelligence")
 
