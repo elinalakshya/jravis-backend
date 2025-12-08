@@ -4,4 +4,4 @@ starlette==0.37.2
 uvicorn==0.30.3
 pydantic==2.8.2
 pydantic_core==2.20.1
-
+pydantic-settings==2.3.0
