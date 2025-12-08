@@ -66,4 +66,3 @@ def root():
 @app.get("/healthz")
 def health():
     return {"status": "ok"}
-    
