@@ -4,10 +4,11 @@ import os
 
 router = APIRouter()
 
-@router.get("/{file_path:path}")
-def get_file(file_path: str):
-    full = os.path.join("storage/files", file_path)
-    if not os.path.exists(full):
-        return {"error": "file not found"}
+@router.get("/factory_output/{filename}")
+def get_factory_file(filename: str):
+    file_path = os.path.join("factory_output", filename)
 
-    return FileResponse(full)
+    if not os.path.exists(file_path):
+        return {"error": "File not found", "path": file_path}
+
+    return FileResponse(file_path, media_type="application/zip")
