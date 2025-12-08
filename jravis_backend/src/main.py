@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from jravis-backend.src.settings import settings
+from jravis_backend.src.settings import settings
 
 # Routers
 from router_health import router as health_router
