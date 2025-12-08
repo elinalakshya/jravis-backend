@@ -2,11 +2,11 @@ from fastapi import APIRouter
 
 router = APIRouter()
 
-@router.get("")
-@router.get("/")
-def health_root():
+@router.get("/healthz")
+def healthz():
     return {"status": "ok"}
 
-@router.get("/healthz")
-def health_ping():
+@router.get("/health")
+def health():
     return {"status": "ok"}
+
