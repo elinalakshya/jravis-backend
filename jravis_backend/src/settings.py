@@ -1,19 +1,16 @@
-import os
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-model_config = {"env_file": ".env"}   
- PROJECT_NAME: str = "JRAVIS Backend"
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8"
+    }
 
-    # Worker API Key
-    WORKER_KEY: str = os.getenv("WORKER_API_KEY", "JRAVIS_2040_MASTER_KEY")
+    PROJECT_NAME: str = "JRAVIS BACKEND"
+    API_KEY: str = "JRV2040_LOCKED_KEY_001"
+    DEBUG: bool = False
 
-    # Internal paths safe for Render
-    BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))
-    FILE_STORAGE: str = os.path.join(BASE_DIR, "files")
-
-    class Config:
-        extra = "allow"
 
 settings = Settings()
+
