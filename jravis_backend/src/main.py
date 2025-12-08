@@ -5,16 +5,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from jravis_backend.src.settings import settings
 
 # Routers
-from jravis_backend.src.routers.router_health import router as health_router
-from jravis_backend.src.routers.router_factory import router as factory_router
-from jravis_backend.src.routers.router_growth import router as growth_router
-from jravis_backend.src.routers.router_files import router as files_router
-from jravis_backend.src.routers.router_streams import router as streams_router
-from jravis_backend.src.routers.router_revenue import router as revenue_router
-from jravis_backend.src.routers.router_pricing import router as pricing_router
-from jravis_backend.src.routers.router_uploader import router as uploader_router
-from jravis_backend.src.routers.router_viral import router as viral_router
-from jravis_backend.src.routers.router_intelligence import router as intelligence_router
+from jravis_backend.src.router_health import router as health_router
+from jravis_backend.src.router_factory import router as factory_router
+from jravis_backend.src.router_growth import router as growth_router
+from jravis_backend.src.router_files import router as files_router
+from jravis_backend.src.router_streams import router as streams_router
+from jravis_backend.src.router_revenue import router as revenue_router
+from jravis_backend.src.router_pricing import router as pricing_router
+from jravis_backend.src.router_uploader import router as uploader_router
+from jravis_backend.src.router_viral import router as viral_router
+from jravis_backend.src.router_intelligence import router as intelligence_router
 
 
 app = FastAPI(title=settings.PROJECT_NAME)
