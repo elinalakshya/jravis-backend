@@ -12,3 +12,4 @@ def get_factory_file(filename: str):
         return {"error": "File not found", "path": file_path}
 
     return FileResponse(file_path, media_type="application/zip")
+
