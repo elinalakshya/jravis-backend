@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Header
-from src.auth_manager import (
+from jravis_backend.src.auth_manager import (
     verify_password, verify_pin, verify_lock,
     create_session, validate_session, logout
 )

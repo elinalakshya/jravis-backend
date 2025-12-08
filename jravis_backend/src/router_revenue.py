@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from src.api_marketplace.aggregator import full_revenue_sync
+from jravis_backend.src.api_marketplace.aggregator import full_revenue_sync
 
 router = APIRouter(prefix="/revenue", tags=["Revenue"])
 

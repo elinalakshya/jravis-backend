@@ -3,7 +3,7 @@
 # -----------------------------------------------------------
 
 from fastapi import APIRouter
-from src.marketplaces.simulated_client import upload_to_all
+from jravis_backend.src.marketplaces.simulated_client import upload_to_all
 
 router = APIRouter(prefix="/api/uploader", tags=["Batch-10 Uploader"])
 

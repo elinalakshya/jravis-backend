@@ -1,8 +1,8 @@
 # src/factory/week_scheduler.py
 
 import random
-from src.factory.template_engine import generate_template
-from src.factory.funnel_engine import generate_funnel
+from jravis_backend.src.factory.template_engine import generate_template
+from jravis_backend.src.factory.funnel_engine import generate_funnel
 
 def generate_week_batch():
     count = random.randint(5, 7)  # B1 MODE

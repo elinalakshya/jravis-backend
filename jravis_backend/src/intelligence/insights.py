@@ -1,6 +1,6 @@
 # src/intelligence/insights.py
 
-from src.intelligence.revenue_tracker import get_today_revenue, get_week_revenue
+from jravis_backend.src.intelligence.revenue_tracker import get_today_revenue, get_week_revenue
 
 def generate_insights():
     """Daily insight from real earnings."""

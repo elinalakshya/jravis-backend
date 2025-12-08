@@ -1,6 +1,6 @@
 # src/intelligence/scaler.py
 
-from src.intelligence.optimizer import SMART_SCALING_FACTORS
+from jravis_backend.src.intelligence.optimizer import SMART_SCALING_FACTORS
 
 def get_scaling_factor(stream: str) -> float:
     """Return scaling factor for given stream."""

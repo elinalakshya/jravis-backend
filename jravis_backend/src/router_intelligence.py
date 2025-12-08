@@ -1,12 +1,12 @@
 # src/router_intelligence.py
 
 from fastapi import APIRouter
-from src.intelligence.revenue_tracker import (
+from jravis_backend.src.intelligence.revenue_tracker import (
     get_today_revenue, get_week_revenue, log_revenue
 )
-from src.intelligence.optimizer import run_optimizer
-from src.intelligence.market_pulse import get_market_pulse
-from src.intelligence.insights import generate_insights, generate_weekly_summary
+from jravis_backend.src.intelligence.optimizer import run_optimizer
+from jravis_backend.src.intelligence.market_pulse import get_market_pulse
+from jravis_backend.src.intelligence.insights import generate_insights, generate_weekly_summary
 
 router = APIRouter(prefix="/intelligence", tags=["intelligence"])
 

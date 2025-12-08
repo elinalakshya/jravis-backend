@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from src.pricing.engine import generate_global_price
+from jravis_backend.src.pricing.engine import generate_global_price
 
 router = APIRouter(prefix="/pricing", tags=["Pricing AI"])
 

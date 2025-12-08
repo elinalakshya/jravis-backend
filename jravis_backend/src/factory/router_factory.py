@@ -1,8 +1,8 @@
 # src/router_factory.py
 
 from fastapi import APIRouter
-from src.factory.week_scheduler import generate_week_batch
-from src.factory.scaling_engine import scale_decision
+from jravis_backend.src.factory.week_scheduler import generate_week_batch
+from jravis_backend.src.factory.scaling_engine import scale_decision
 
 router = APIRouter(prefix="/factory", tags=["Factory"])
 

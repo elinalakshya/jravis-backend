@@ -1,6 +1,6 @@
 # src/intelligence/optimizer.py
 
-from src.intelligence.revenue_tracker import get_today_revenue
+from jravis_backend.src.intelligence.revenue_tracker import get_today_revenue
 
 SMART_SCALING_FACTORS = {}
 
