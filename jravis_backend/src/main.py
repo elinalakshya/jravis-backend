@@ -36,5 +36,5 @@ async def verify_api_key(request: Request, call_next):
     return await call_next(request)
 
 # --------------------- ROUTERS ------------------------
-app.include_router(health_router, prefix="/")
+app.include_router(health_router)
 
