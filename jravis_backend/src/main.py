@@ -18,7 +18,7 @@ from jravis_backend.src.router_viral import router as viral_router
 from jravis_backend.src.router_intelligence import router as intelligence_router
 
 # ------------------------------------------------------
-# CREATE APP  (this must ALWAYS come before include_router)
+# CREATE APP (must ALWAYS come before include_router)
 # ------------------------------------------------------
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -36,13 +36,4 @@ async def verify_api_key(request: Request, call_next):
     return await call_next(request)
 
 # --------------------- ROUTERS ------------------------
-app.include_router(health_router, prefix="/healthz")
-app.include_router(factory_router, prefix="/api/factory")
-app.include_router(growth_router, prefix="/api/growth")
-app.include_router(files_router, prefix="/files")
-app.include_router(streams_router, prefix="/api/streams")
-app.include_router(revenue_router, prefix="/api/revenue")
-app.include_router(pricing_router, prefix="/api/pricing")
-app.include_router(uploader_router, prefix="/api/upload")
-app.include_router(viral_router, prefix="/api/viral")
-app.include_router(intelligence_router, prefix="/api/intelligence")
+app.include_router(health_router, prefix="/healthz
