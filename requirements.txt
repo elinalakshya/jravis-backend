@@ -1,2 +1,7 @@
-requests
-python-dotenv
+# --- FastAPI Stack (Stable Matching Versions) ---
+fastapi==0.111.0
+starlette==0.37.2
+uvicorn==0.30.3
+pydantic==2.8.2
+pydantic_core==2.20.1
+
