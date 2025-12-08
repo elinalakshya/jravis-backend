@@ -1,18 +1,22 @@
 from fastapi import APIRouter, Request
 
-router = APIRouter(tags=["Growth"])   # FIXED prefix
-
-@router.get("/evaluate/{name}")
-def evaluate(name: str):
-    return {"template": name, "score": 50, "winner": False, "action": "pause"}
+router = APIRouter()
 
 @router.post("/evaluate")
 async def evaluate_growth(request: Request):
-    body = await request.json()
+
+    # Safely try to read JSON body
+    try:
+        body = await request.json()
+    except:
+        body = {}
+
+    name = body.get("name", "unknown")
+
+    # Dummy output for now
     return {
-        "input": body,
-        "score": 72,
-        "winner": True,
-        "action": "scale"
+        "template": name,
+        "score": 50,
+        "winner": False,
+        "action": "pause"
     }
-    
