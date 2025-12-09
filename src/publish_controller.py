@@ -12,7 +12,7 @@ def get_active_streams():
     if os.getenv("SHOPIFY_API_KEY") and os.getenv("SHOPIFY_PASSWORD") and os.getenv("SHOPIFY_STORE_URL"):
         streams.append("shopify")
 
-    # Always-running streams
+    # Always-on internal content streams
     streams += [
         "auto_blogging",
         "newsletter",

@@ -3,6 +3,7 @@ import zipfile
 import os
 
 def run_all_streams_micro_engine(zip_path, title, backend_url):
+    from unified_engine_publish_patch import run_publishers
 
     print("⚙️ JRAVIS UNIFIED ENGINE STARTED")
     print("ZIP =", zip_path)
@@ -36,6 +37,7 @@ def run_all_streams_micro_engine(zip_path, title, backend_url):
         return
 
     print("✔️ ZIP extracted, ready to run publishers")
+        run_publishers(title, local_path, logger=print)
 
     # Now call all engines (placeholder)
     print("📦 Running marketplace, viral, pricing engines… (OK)")
