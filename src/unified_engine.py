@@ -37,6 +37,11 @@ def run_all_streams_micro_engine(zip_path, title, backend_url):
         return
 
     print("✔️ ZIP extracted, ready to run publishers")
+    print("🛒 Publishing to platforms...")
+    from publishing_engine import run_publishers
+    pub = run_publishers(title, title, extracted)
+    print("📢 Publish Results:", pub)
+
         run_publishers(title, local_path, logger=print)
 
     # Now call all engines (placeholder)
