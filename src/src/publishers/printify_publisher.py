@@ -10,7 +10,6 @@ def publish_to_printify(title, description, file_path):
     if not shop_id:
         return {"ok": False, "reason": "Missing Printify shop ID"}
 
-    # Extract thumbnail
     thumb = None
     with zipfile.ZipFile(file_path, "r") as z:
         for n in z.namelist():
@@ -30,7 +29,7 @@ def publish_to_printify(title, description, file_path):
     payload = {
         "title": title,
         "description": description,
-        "blueprint_id": 6,   # T-shirt default
+        "blueprint_id": 6,
         "print_provider_id": 1,
         "variants": [{"id": 401, "price": 1500, "is_enabled": True}],
         "images": []

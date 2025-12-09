@@ -9,7 +9,7 @@ def publish_to_gumroad(title, description, file_path):
     payload = {
         "name": title,
         "description": description,
-        "price": 299,  # JRAVIS default price
+        "price": 299,
     }
 
     files = {"content": open(file_path, "rb")}
