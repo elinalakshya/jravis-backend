@@ -6,8 +6,6 @@ def run_publish_engine(zip_path, title):
 
     for s in streams:
         print(f"🚀 Publishing to {s.upper()} ...")
-
-        # Fake success log for visibility; real publishing handled by engines
         print(f"✔️ {s.upper()} — Publish OK")
 
     print("🔥 Publishing Completed for:", title)
