@@ -16,6 +16,7 @@ from jravis_backend.src.router_pricing import router as pricing_router
 from jravis_backend.src.router_uploader import router as uploader_router
 from jravis_backend.src.router_viral import router as viral_router
 from jravis_backend.src.router_intelligence import router as intelligence_router
+from .router_logs import router as logs_router
 
 # ------------------------------------------------------
 # CREATE APP (must ALWAYS come before include_router)
@@ -67,3 +68,4 @@ app.include_router(viral_router, prefix="/api/viral")
 # Intelligence
 app.include_router(intelligence_router, prefix="/api/intelligence")
 
+app.include_router(logs_router, prefix="/api")
