@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # unified_engine.py
 # Minimal, robust unified engine stub for JRAVIS worker import.
 # Place this file at src/unified_engine.py
@@ -81,3 +82,6 @@ if __name__ == "__main__":  # pragma: no cover
         run_all_streams_micro_engine({"local_test": True})
     except Exception:
         logger.error("unified_engine main runner failed:\n%s", traceback.format_exc())
+=======
+# (paste the same file content from Option A here)
+>>>>>>> fix/unified-engine
