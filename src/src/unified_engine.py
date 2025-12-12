@@ -1,14 +1,10 @@
-# 1) show the offending area so you can confirm the bad line(s)
-echo "---- before edit: head of src/src/unified_engine.py ----"
-sed -n '1,200p' src/src/unified_engine.py || true
-
-# 2) OVERWRITE both locations with a clean Python-only implementation
+# --- OVERWRITE both unified_engine.py files with a CLEAN python implementation ---
 cat > src/unified_engine.py <<'PY'
 # unified_engine.py
-# Robust adapter for run_all_streams_micro_engine:
-# - accepts 0, 1 (config dict), or 3 args (zip_path, template_name, backend_url)
-# - adapts to run_publishers signatures at runtime
-# - contains no shell lines — pure Python only
+# Clean, pure-Python unified engine adapter.
+# Accepts run_all_streams_micro_engine(), run_all_streams_micro_engine(config),
+# or run_all_streams_micro_engine(zip_path, template_name, backend_url).
+# Adapts to varying run_publishers signatures at runtime.
 
 import logging
 import traceback
@@ -17,7 +13,7 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# Try to import actual project engines; if unavailable, provide stubs
+# Try importing the real publishing engine; fall back to a stub if missing.
 try:
     from src.publishing_engine import run_publishers  # type: ignore
 except Exception as _e:
@@ -26,6 +22,7 @@ except Exception as _e:
         logger.info("stub run_publishers called (publishing_engine not installed). config=%s", config)
         return
 
+# Try importing other handlers; fall back to stub if missing.
 try:
     from src.some_other_engine import run_other_handlers  # type: ignore
 except Exception:
@@ -112,10 +109,10 @@ if __name__ == "__main__":  # pragma: no cover
     run_all_streams_micro_engine("factory_output/template-test.zip", "template-test", "https://localhost")
 PY
 
-# ensure the nested path exists and write the same clean file there
+# Also write same clean file to nested path worker uses
 mkdir -p src/src
 cat > src/src/unified_engine.py <<'PY'
-# duplicate nested copy for worker import path; same implementation as src/unified_engine.py
+# duplicate for nested path; same implementation as src/unified_engine.py
 import logging, traceback, inspect
 from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
@@ -199,18 +196,14 @@ def run_all_streams_micro_engine(*args, **kwargs) -> None:
         logger.error("run_all_streams_micro_engine top-level failure:\n%s", traceback.format_exc())
 PY
 
-# 3) Syntax-check both files
+# Syntax-check both files
 python -m py_compile src/unified_engine.py || (echo "py_compile failed for src/unified_engine.py" && exit 1)
 python -m py_compile src/src/unified_engine.py || (echo "py_compile failed for src/src/unified_engine.py" && exit 1)
 
-# 4) commit & push
+# Commit & push to main so worker picks it up on next sync
 git add src/unified_engine.py src/src/unified_engine.py
-git commit -m "fix: clean unified_engine - remove stray shell text; ensure valid python" || true
+git commit -m "fix: clean unified_engine.py (remove stray shell text) and ensure runtime-adaptive adapter" || true
 git push origin main || true
 
-# 5) confirm the nested file no longer contains shell text
-echo "---- after edit: head of src/src/unified_engine.py ----"
-sed -n '1,200p' src/src/unified_engine.py || true
-
-echo "Now restart the worker on the host: python worker.py 2>&1 | sed -n '1,80p'"
-``
+# Verify the nested file no longer contains stray shell text
+sed -n '1,120p' src/src/unified_engine.py
