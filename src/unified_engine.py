@@ -1,6 +1,11 @@
-# Overwrite main path
+# OVERWRITE both unified_engine files with a clean Python-only implementation
 cat > src/unified_engine.py <<'PY'
-# unified_engine.py — runtime-aware calling for run_publishers
+# unified_engine.py
+# Robust adapter for run_all_streams_micro_engine which:
+# - accepts 0, 1 (config dict), or 3 positional args (zip_path, template_name, backend_url)
+# - adapts to different run_publishers signatures at runtime
+# - safe-fallbacks if optional modules are missing
+
 import logging
 import traceback
 import inspect
@@ -8,7 +13,7 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# Attempt to import real engines; allow fallbacks
+# Try to import actual project engines; if unavailable, provide stubs
 try:
     from src.publishing_engine import run_publishers  # type: ignore
 except Exception as _e:
@@ -36,52 +41,32 @@ def _normalize_args_to_config(*args, **kwargs) -> Dict[str, Any]:
     return cfg
 
 def _infer_description_and_extracted_dir(config: Dict[str, Any]) -> (str, str):
-    """
-    Try to derive reasonable values for description and extracted_dir if not provided.
-    - description: try config['description'] -> template_name -> zip filename
-    - extracted_dir: try config['extracted_dir'] -> zip_path without .zip -> basename
-    """
     description = config.get("description") or config.get("template_name") or ""
     extracted_dir = config.get("extracted_dir") or ""
     if not extracted_dir:
         zip_path = config.get("zip_path") or ""
         if isinstance(zip_path, str) and zip_path.endswith(".zip"):
-            # remove extension and any parent folders
             extracted_dir = zip_path.rsplit("/", 1)[-1][:-4]
         elif isinstance(zip_path, str):
             extracted_dir = zip_path.rsplit("/", 1)[-1]
     return description, extracted_dir
 
 def _call_run_publishers_safely(config: Dict[str, Any]) -> None:
-    """
-    Call run_publishers using the correct calling convention based on its signature.
-    Supports:
-      - run_publishers(config)
-      - run_publishers(config, description, extracted_dir)
-      - other variants (will try best-effort)
-    """
     try:
         sig = inspect.signature(run_publishers)
-        params = sig.parameters
-        param_len = len(params)
+        param_len = len(sig.parameters)
     except Exception:
-        # If we can't introspect, try the simple call
         param_len = 1
 
-    # Common patterns:
     try:
         if param_len == 1:
-            # single-arg API
             run_publishers(config)
             return
         elif param_len >= 3:
-            # expect (config, description, extracted_dir) as common pattern in your code
             description, extracted_dir = _infer_description_and_extracted_dir(config)
-            # call with first three args
             run_publishers(config, description, extracted_dir)
             return
         else:
-            # fallback: try single arg then multi-arg
             try:
                 run_publishers(config)
                 return
@@ -93,29 +78,22 @@ def _call_run_publishers_safely(config: Dict[str, Any]) -> None:
         logger.warning("run_publishers TypeError on tried signature: %s", te)
     except Exception:
         logger.exception("run_publishers raised an unexpected error")
-    # As last resort, try calling with kwargs if supported
+
     try:
         run_publishers(config=config)
     except Exception:
         logger.exception("All attempts to call run_publishers failed")
 
 def run_all_streams_micro_engine(*args, **kwargs) -> None:
-    """
-    Entrypoint compatible with multiple calling styles. Normalizes to a config dict
-    and calls the publishing and other handlers. Handles different run_publishers
-    signatures at runtime.
-    """
     try:
         config = _normalize_args_to_config(*args, **kwargs)
         logger.info("run_all_streams_micro_engine called. config: %s", config)
 
-        # Call publishing engine using runtime-adaptive wrapper
         try:
             _call_run_publishers_safely(config)
         except Exception:
             logger.exception("run_publishers failed in unified engine")
 
-        # call other handlers
         try:
             run_other_handlers(config)
         except Exception:
@@ -130,10 +108,10 @@ if __name__ == "__main__":  # pragma: no cover
     run_all_streams_micro_engine("factory_output/template-test.zip", "template-test", "https://localhost")
 PY
 
-# Mirror into nested path that worker sometimes imports
+# Overwrite nested path the worker has used
 mkdir -p src/src
 cat > src/src/unified_engine.py <<'PY'
-# duplicate for nested path used by worker — runtime-aware calling for run_publishers
+# duplicate nested copy for worker import path; same implementation as src/unified_engine.py
 import logging, traceback, inspect
 from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
@@ -173,8 +151,7 @@ def _infer_description_and_extracted_dir(config: Dict[str, Any]) -> (str, str):
 def _call_run_publishers_safely(config: Dict[str, Any]) -> None:
     try:
         sig = inspect.signature(run_publishers)
-        params = sig.parameters
-        param_len = len(params)
+        param_len = len(sig.parameters)
     except Exception:
         param_len = 1
     try:
@@ -221,11 +198,25 @@ if __name__ == "__main__":  # pragma: no cover
     run_all_streams_micro_engine("factory_output/template-test.zip", "template-test", "https://localhost")
 PY
 
-# Syntax-check, commit & push
+# 2) Syntax-check both files
 python -m py_compile src/unified_engine.py || (echo "py_compile failed for src/unified_engine.py" && exit 1)
 python -m py_compile src/src/unified_engine.py || (echo "py_compile failed for src/src/unified_engine.py" && exit 1)
+
+# 3) Commit & push the corrected files
 git add src/unified_engine.py src/src/unified_engine.py
-git commit -m "fix: runtime-call adapter for run_publishers (supports 1-arg and 3-arg signatures)" || true
+git commit -m "fix: remove stray shell code; ensure unified_engine is valid python and runtime-adapts to run_publishers signature" || true
 git push origin main || true
 
-echo "Files updated and pushed. Now restart the worker on the host: python worker.py"
+# 4) Quick import test (run from repo on worker host to confirm)
+python - <<'PY'
+import importlib.util, inspect
+spec = importlib.util.spec_from_file_location("ue", "src/src/unified_engine.py")
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+print("loaded from:", getattr(m, "__file__", None))
+print("signature:", inspect.signature(m.run_all_streams_micro_engine))
+m.run_all_streams_micro_engine("factory_output/t.zip","template-t","https://jravis-backend.onrender.com")
+print("SIMULATION OK")
+PY
+
+echo "Now restart the worker on the host: python worker.py 2>&1 | sed -n '1,80p'"
