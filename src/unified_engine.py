@@ -1,88 +1,83 @@
-import requests
-import zipfile
-import os
+# unified_engine.py
+# Minimal, robust unified engine stub for JRAVIS worker import.
+# Place this file at src/unified_engine.py
+# This file intentionally:
+# - exposes run_all_streams_micro_engine so worker.py can import it
+# - tries to import optional project modules but degrades gracefully if missing
 
-def run_all_streams_micro_engine(zip_path, title, backend_url):
-    from unified_engine_publish_patch import run_publishers
+import logging
+import traceback
+from typing import Any, Dict, Optional
 
-    print("⚙️ JRAVIS UNIFIED ENGINE STARTED")
-    print("ZIP =", zip_path)
-    print("TITLE =", title)
+logger = logging.getLogger(__name__)
 
-    # Download full ZIP from backend
-    remote_url = f"{backend_url}/files/{zip_path}"
-    print("[DOWNLOAD]", remote_url)
 
-    try:
-        r = requests.get(remote_url)
-        if r.status_code != 200:
-            print("[DOWNLOAD ERROR]:", r.text)
-            print("❌ Cannot proceed")
-            return
-    except Exception as e:
-        print("❌ Download exception:", e)
+# Attempt to import project-specific engines; if they don't exist, create no-op fallbacks.
+try:
+    # Example: your project likely provides these; import if present.
+    from src.publishing_engine import run_publishers  # type: ignore
+except Exception as e:  # pragma: no cover
+    logger.warning("Optional module src.publishing_engine not available: %s", e)
+
+    def run_publishers(config: Optional[Dict[str, Any]] = None) -> None:  # type: ignore
+        logger.info("stub run_publishers called (publishing_engine not installed)")
         return
 
-    # Save ZIP locally
-    local_zip = f"tmp_{title}.zip"
-    with open(local_zip, "wb") as f:
-        f.write(r.content)
 
-    # Extract ZIP
-    try:
-        with zipfile.ZipFile(local_zip, "r") as z:
-            z.extractall(f"unzipped/{title}")
-    except Exception as e:
-        print("❌ ZIP extraction failed:", e)
+try:
+    from src.some_other_engine import run_other_handlers  # type: ignore
+except Exception:
+    # pick a safe fallback
+    def run_other_handlers(config: Optional[Dict[str, Any]] = None) -> None:  # type: ignore
+        logger.info("stub run_other_handlers called (some_other_engine not installed)")
         return
 
-    print("✔️ ZIP extracted, ready to run publishers")
-print('🛒 Publishing to platforms...')
-    from src.publishing_engine import run_publishers
-    pub = run_publishers(title, title, extracted)
-    print('📢 Publish Results:', pub)
-print('🛒 Publishing to platforms...')
-    from src.publishing_engine import run_publishers
-    pub = run_publishers(title, title, extracted)
-    print('📢 Publish Results:', pub)
-print('🛒 Publishing to platforms...')
-    from src.publishing_engine import run_publishers
-    pub = run_publishers(title, title, extracted, safe_mode=True)
-    print('📢 Publish Results:', pub)
-print('🛒 Publishing to platforms...')
-    from src.publishing_engine import run_publishers
-    pub = run_publishers(title, title, extracted)
-    print('📢 Publish Results:', pub)
-    print("🛒 Publishing to platforms...")
-    from src.publishing_engine import run_publishers
-    pub = run_publishers(title, title, extracted)
-    print("📢 Publish Results:", pub)
-    print("🛒 Publishing to platforms...")
-    from publishing_engine import run_publishers
-    pub = run_publishers(title, title, extracted)
-    print("📢 Publish Results:", pub)
 
-    print("🛒 Publishing to platforms...")
-    from publishing_engine import run_publishers
-    pub = run_publishers(title, title, extracted)
-    print("📢 Publish Results:", pub)
+def fetch_remote_config(url: str) -> Dict[str, Any]:
+    """
+    Placeholder helper to fetch remote config. Keep minimal so it never fails import-time.
+    Replace with real implementation when stable.
+    """
+    logger.info("fetch_remote_config requested for url: %s", url)
+    try:
+        # Lazy import to avoid hard dependency
+        import json
+        return {"source": url}
+    except Exception:
+        logger.exception("fetch_remote_config failed")
+        return {}
 
-    print("🛒 Publishing to platforms...")
-    from publishing_engine import run_publishers
-    pub = run_publishers(title, title, extracted)
-    print("📢 Publish Results:", pub)
 
-    print("🛒 Publishing to platforms...")
-    from publishing_engine import run_publishers
-    pub = run_publishers(title, title, extracted)
-    print("📢 Publish Results:", pub)
+def run_all_streams_micro_engine(config: Optional[Dict[str, Any]] = None) -> None:
+    """
+    Primary entrypoint expected by worker.py:
+        from unified_engine import run_all_streams_micro_engine
 
-    print("🛒 Publishing to platforms...")
-    from publishing_engine import run_publishers
-    pub = run_publishers(title, title, extracted)
-    print("📢 Publish Results:", pub)
+    This function runs the main micro-engines. It will not raise ImportError if optional modules
+    are missing — instead it logs and continues.
+    """
+    logger.info("run_all_streams_micro_engine starting")
+    if config is None:
+        config = {}
 
-        run_publishers(title, local_path, logger=print)
+    # Example safe calls to project handlers
+    try:
+        run_publishers(config)
+    except Exception:
+        logger.exception("run_publishers failed in unified engine")
 
-    # Now call all engines (placeholder)
-    print("📦 Running marketplace, viral, pricing engines… (OK)")
+    try:
+        run_other_handlers(config)
+    except Exception:
+        logger.exception("run_other_handlers failed in unified engine")
+
+    logger.info("run_all_streams_micro_engine finished")
+
+
+# Keep a small CLI test runner so you can run this file directly for smoke tests.
+if __name__ == "__main__":  # pragma: no cover
+    logging.basicConfig(level=logging.INFO)
+    try:
+        run_all_streams_micro_engine({"local_test": True})
+    except Exception:
+        logger.error("unified_engine main runner failed:\n%s", traceback.format_exc())
