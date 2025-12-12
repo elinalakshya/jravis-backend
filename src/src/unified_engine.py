@@ -1,12 +1,7 @@
-# unified_engine.py (duplicate location to satisfy worker import path)
-# See src/unified_engine.py for full explanation.
-
-import logging
-import traceback
+# duplicate for nested path used by worker
+import logging, traceback
 from typing import Any, Dict, Optional
-
 logger = logging.getLogger(__name__)
-
 try:
     from src.publishing_engine import run_publishers  # type: ignore
 except Exception as _e:
@@ -14,14 +9,12 @@ except Exception as _e:
     def run_publishers(config: Optional[Dict[str, Any]] = None) -> None:  # type: ignore
         logger.info("stub run_publishers called (publishing_engine not installed). config=%s", config)
         return
-
 try:
     from src.some_other_engine import run_other_handlers  # type: ignore
 except Exception:
     def run_other_handlers(config: Optional[Dict[str, Any]] = None) -> None:  # type: ignore
         logger.info("stub run_other_handlers called (some_other_engine not installed). config=%s", config)
         return
-
 def _normalize_args_to_config(*args, **kwargs) -> Dict[str, Any]:
     cfg: Dict[str, Any] = {}
     if len(args) == 3:
@@ -32,7 +25,6 @@ def _normalize_args_to_config(*args, **kwargs) -> Dict[str, Any]:
         cfg["positional_args"] = args
     cfg.update(kwargs)
     return cfg
-
 def run_all_streams_micro_engine(*args, **kwargs) -> None:
     try:
         config = _normalize_args_to_config(*args, **kwargs)
@@ -48,10 +40,6 @@ def run_all_streams_micro_engine(*args, **kwargs) -> None:
         logger.info("run_all_streams_micro_engine finished successfully")
     except Exception:
         logger.error("run_all_streams_micro_engine top-level failure:\n%s", traceback.format_exc())
-
 if __name__ == "__main__":  # pragma: no cover
     logging.basicConfig(level=logging.INFO)
-    try:
-        run_all_streams_micro_engine("factory_output/template-test.zip", "template-test", "https://localhost")
-    except Exception:
-        logger.error("unified_engine main runner failed:\n%s", traceback.format_exc())
+    run_all_streams_micro_engine("factory_output/template-test.zip", "template-test", "https://localhost")
