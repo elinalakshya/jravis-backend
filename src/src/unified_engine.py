@@ -1,10 +1,14 @@
-# OVERWRITE both unified_engine files with a clean Python-only implementation
+# 1) show the offending area so you can confirm the bad line(s)
+echo "---- before edit: head of src/src/unified_engine.py ----"
+sed -n '1,200p' src/src/unified_engine.py || true
+
+# 2) OVERWRITE both locations with a clean Python-only implementation
 cat > src/unified_engine.py <<'PY'
 # unified_engine.py
-# Robust adapter for run_all_streams_micro_engine which:
-# - accepts 0, 1 (config dict), or 3 positional args (zip_path, template_name, backend_url)
-# - adapts to different run_publishers signatures at runtime
-# - safe-fallbacks if optional modules are missing
+# Robust adapter for run_all_streams_micro_engine:
+# - accepts 0, 1 (config dict), or 3 args (zip_path, template_name, backend_url)
+# - adapts to run_publishers signatures at runtime
+# - contains no shell lines — pure Python only
 
 import logging
 import traceback
@@ -108,7 +112,7 @@ if __name__ == "__main__":  # pragma: no cover
     run_all_streams_micro_engine("factory_output/template-test.zip", "template-test", "https://localhost")
 PY
 
-# Overwrite nested path the worker has used
+# ensure the nested path exists and write the same clean file there
 mkdir -p src/src
 cat > src/src/unified_engine.py <<'PY'
 # duplicate nested copy for worker import path; same implementation as src/unified_engine.py
@@ -193,30 +197,20 @@ def run_all_streams_micro_engine(*args, **kwargs) -> None:
         logger.info("run_all_streams_micro_engine finished successfully")
     except Exception:
         logger.error("run_all_streams_micro_engine top-level failure:\n%s", traceback.format_exc())
-if __name__ == "__main__":  # pragma: no cover
-    logging.basicConfig(level=logging.INFO)
-    run_all_streams_micro_engine("factory_output/template-test.zip", "template-test", "https://localhost")
 PY
 
-# 2) Syntax-check both files
+# 3) Syntax-check both files
 python -m py_compile src/unified_engine.py || (echo "py_compile failed for src/unified_engine.py" && exit 1)
 python -m py_compile src/src/unified_engine.py || (echo "py_compile failed for src/src/unified_engine.py" && exit 1)
 
-# 3) Commit & push the corrected files
+# 4) commit & push
 git add src/unified_engine.py src/src/unified_engine.py
-git commit -m "fix: remove stray shell code; ensure unified_engine is valid python and runtime-adapts to run_publishers signature" || true
+git commit -m "fix: clean unified_engine - remove stray shell text; ensure valid python" || true
 git push origin main || true
 
-# 4) Quick import test (run from repo on worker host to confirm)
-python - <<'PY'
-import importlib.util, inspect
-spec = importlib.util.spec_from_file_location("ue", "src/src/unified_engine.py")
-m = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(m)
-print("loaded from:", getattr(m, "__file__", None))
-print("signature:", inspect.signature(m.run_all_streams_micro_engine))
-m.run_all_streams_micro_engine("factory_output/t.zip","template-t","https://jravis-backend.onrender.com")
-print("SIMULATION OK")
-PY
+# 5) confirm the nested file no longer contains shell text
+echo "---- after edit: head of src/src/unified_engine.py ----"
+sed -n '1,200p' src/src/unified_engine.py || true
 
 echo "Now restart the worker on the host: python worker.py 2>&1 | sed -n '1,80p'"
+``
