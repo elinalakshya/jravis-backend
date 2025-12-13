@@ -1,44 +1,48 @@
+# src/src/publishing_engine.py
+
 import os
+import logging
+
 from publishers.gumroad_publisher import publish_to_gumroad
 from publishers.payhip_publisher import publish_to_payhip
 from publishers.printify_publisher import publish_to_printify
 
+logger = logging.getLogger(__name__)
+
 
 def run_publishers(title: str, description: str, zip_path: str):
     """
-    zip_path MUST be the full path to the zip file.
-    Example: factory_output/template-1234.zip
+    Unified publisher dispatcher.
+    All publishers MUST accept (title, description, zip_path).
     """
-
-    # 🔒 Normalize path (absolute safety)
-    zip_path = os.path.normpath(zip_path)
-
-    # 🛡️ If someone passes a directory, construct zip path safely
-    if os.path.isdir(zip_path):
-        zip_path = os.path.join(zip_path, f"{title}.zip")
-
-    # 🛡️ Prevent double-zip paths
-    if zip_path.endswith(".zip" + os.sep + f"{title}.zip"):
-        zip_path = os.path.join(os.path.dirname(zip_path), f"{title}.zip")
-
-    if not os.path.isfile(zip_path):
-        raise FileNotFoundError(f"ZIP file not found: {zip_path}")
-
     results = []
 
+    logger.info("📦 Publishing start: %s", title)
+    logger.info("📁 ZIP path: %s", zip_path)
+
     if os.getenv("GUMROAD_API_KEY"):
+        logger.info("➡️ Gumroad enabled")
         results.append(
             publish_to_gumroad(title, description, zip_path)
         )
+    else:
+        logger.info("⏭️ Gumroad skipped (no API key)")
 
     if os.getenv("PAYHIP_API_KEY"):
+        logger.info("➡️ Payhip enabled")
         results.append(
             publish_to_payhip(title, description, zip_path)
         )
+    else:
+        logger.info("⏭️ Payhip skipped (no API key)")
 
     if os.getenv("PRINTIFY_API_KEY"):
+        logger.info("➡️ Printify enabled")
         results.append(
             publish_to_printify(title, description, zip_path)
         )
+    else:
+        logger.info("⏭️ Printify skipped (no API key)")
 
+    logger.info("✅ Publishing complete: %s", title)
     return results
