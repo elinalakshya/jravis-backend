@@ -1,21 +1,47 @@
-import os, requests
+import os
+import requests
 
-def publish_to_gumroad(title, description, file_path):
+def publish_to_gumroad(title: str, description: str, zip_path: str):
+    """
+    Uploads ZIP product to Gumroad.
+    Contract: (title, description, zip_path)
+    """
+
     api_key = os.getenv("GUMROAD_API_KEY")
     if not api_key:
-        return {"ok": False, "reason": "Missing Gumroad API key"}
+        raise RuntimeError("GUMROAD_API_KEY not set")
+
+    if not os.path.isfile(zip_path):
+        raise FileNotFoundError(f"ZIP not found: {zip_path}")
 
     url = "https://api.gumroad.com/v2/products"
-    payload = {
+
+    data = {
         "name": title,
         "description": description,
-        "price": 299,
+        "price": "500",  # change later
     }
 
-    files = {"content": open(file_path, "rb")}
-    r = requests.post(url, data=payload, files=files, params={"access_token": api_key})
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+    }
 
-    try:
-        return {"ok": (r.status_code == 200), "platform": "Gumroad", "response": r.json()}
-    except:
-        return {"ok": False, "response": r.text}
+    with open(zip_path, "rb") as f:
+        files = {
+            "content": f
+        }
+
+        response = requests.post(
+            url,
+            data=data,
+            files=files,
+            headers=headers,
+            timeout=60,
+        )
+
+    if response.status_code not in (200, 201):
+        raise RuntimeError(
+            f"Gumroad upload failed [{response.status_code}]: {response.text}"
+        )
+
+    return response.json()
