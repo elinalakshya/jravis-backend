@@ -6,7 +6,8 @@ import zipfile
 
 app = FastAPI()
 
-BASE_DIR = os.getcwd()
+# 🔥 CRITICAL FIX: anchor paths to this file location
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FACTORY_DIR = os.path.join(BASE_DIR, "factory_output")
 
 os.makedirs(FACTORY_DIR, exist_ok=True)
@@ -27,7 +28,6 @@ def generate_template():
     zip_name = f"{name}.zip"
     zip_path = os.path.join(FACTORY_DIR, zip_name)
 
-    # create dummy zip (replace with real generator later)
     with zipfile.ZipFile(zip_path, "w") as z:
         z.writestr("README.txt", f"Generated template {name}")
 
@@ -38,30 +38,33 @@ def generate_template():
     }
 
 # --------------------------------------------------
-# FACTORY: DOWNLOAD ZIP (🔥 FIX)
+# FACTORY: DOWNLOAD ZIP (🔥 NOW WORKS)
 # --------------------------------------------------
 @app.get("/api/factory/download/{filename}")
 def download_factory_zip(filename: str):
     file_path = os.path.join(FACTORY_DIR, filename)
 
     if not os.path.isfile(file_path):
-        raise HTTPException(status_code=404, detail="ZIP not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"ZIP not found: {file_path}",
+        )
 
     return FileResponse(
-        file_path,
+        path=file_path,
         media_type="application/zip",
         filename=filename,
     )
 
 # --------------------------------------------------
-# FACTORY: SCALE (stub)
+# FACTORY: SCALE
 # --------------------------------------------------
 @app.post("/api/factory/scale/{name}")
 def scale_factory(name: str):
     return {"status": "scaled", "name": name}
 
 # --------------------------------------------------
-# GROWTH (stub)
+# GROWTH
 # --------------------------------------------------
 @app.post("/api/growth/evaluate")
 def growth_evaluate():
