@@ -1,10 +1,7 @@
 
-# unified_engine.py
-# Clean adapter for run_all_streams_micro_engine:
-# - accepts run_all_streams_micro_engine()
-# - accepts run_all_streams_micro_engine(config_dict)
-# - accepts run_all_streams_micro_engine(zip_path, template_name, backend_url)
-# Adapts to different run_publishers signatures at runtime.
+# unified_engine.py — runtime-adaptive publisher caller (preferred 2-arg)
+# Tries multiple calling conventions, now preferring (description, extracted_dir)
+# and logs the publisher signature for deterministic behavior.
 
 import logging
 import traceback
@@ -13,7 +10,7 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# Try importing the real publishing engine; fall back to a stub if missing.
+# Import real publisher if present
 try:
     from src.publishing_engine import run_publishers  # type: ignore
 except Exception as _e:
@@ -22,7 +19,7 @@ except Exception as _e:
         logger.info("stub run_publishers called (publishing_engine not installed). config=%s", config)
         return
 
-# Try importing other handlers; fall back to stub if missing.
+# Import other handlers (stub fallback)
 try:
     from src.some_other_engine import run_other_handlers  # type: ignore
 except Exception:
@@ -53,57 +50,114 @@ def _infer_description_and_extracted_dir(config: Dict[str, Any]) -> (str, str):
     return description, extracted_dir
 
 def _call_run_publishers_safely(config: Dict[str, Any]) -> None:
+    """
+    Heuristic caller for run_publishers. Prefer (description, extracted_dir) if plausible.
+    Logs signature and every attempted call for debugging.
+    """
+    tried = []
+    description, extracted_dir = _infer_description_and_extracted_dir(config)
+
+    # Introspect
     try:
         sig = inspect.signature(run_publishers)
-        param_len = len(sig.parameters)
-    except Exception:
-        param_len = 1
+        param_names = list(sig.parameters.keys())
+        param_len = len(param_names)
+        logger.info("run_publishers signature: params=%s, len=%d", param_names, param_len)
+    except Exception as e:
+        param_names = []
+        param_len = 0
+        logger.warning("Could not introspect run_publishers: %s", e)
 
-    try:
-        if param_len == 1:
+    # Strategy (preference order)
+    # A. If it seems to be a 2-arg publisher -> try (description, extracted_dir) first.
+    # B. If 'config' kw is accepted -> try run_publishers(config=config)
+    # C. If single param -> try run_publishers(config)
+    # D. If 3+ params -> try run_publishers(config, description, extracted_dir)
+    # E. Try permutations and last-resort no-arg.
+
+    # A) Prefer 2-positional if signature length == 2 or param names look like ['', '']:
+    if param_len == 2 or (len(param_names) >= 1 and ('description' in param_names or 'extracted_dir' in param_names)):
+        try:
+            tried.append("run_publishers(description, extracted_dir)")
+            run_publishers(description, extracted_dir)
+            logger.info("run_publishers succeeded with (description, extracted_dir)")
+            return
+        except Exception as e:
+            logger.warning("run_publishers(description, extracted_dir) failed: %s", e)
+
+    # B) If 'config' kw in param names, try keyword call
+    if 'config' in param_names:
+        try:
+            tried.append("run_publishers(config=config)")
+            run_publishers(config=config)
+            logger.info("run_publishers succeeded with keyword config")
+            return
+        except Exception as e:
+            logger.warning("run_publishers(config=config) failed: %s", e)
+
+    # C) If single param, try positional config
+    if param_len == 1:
+        try:
+            tried.append("run_publishers(config)")
             run_publishers(config)
+            logger.info("run_publishers succeeded with single positional config")
             return
-        elif param_len >= 3:
-            description, extracted_dir = _infer_description_and_extracted_dir(config)
-            run_publishers(config, description, extracted_dir)
-            return
-        else:
-            try:
-                run_publishers(config)
-                return
-            except TypeError:
-                description, extracted_dir = _infer_description_and_extracted_dir(config)
-                run_publishers(config, description, extracted_dir)
-                return
-    except TypeError as te:
-        logger.warning("run_publishers TypeError on tried signature: %s", te)
-    except Exception:
-        logger.exception("run_publishers raised an unexpected error")
+        except Exception as e:
+            logger.warning("run_publishers(config) failed: %s", e)
 
+    # D) If 3+ params, try config + description + extracted_dir
+    if param_len >= 3:
+        try:
+            tried.append("run_publishers(config, description, extracted_dir)")
+            run_publishers(config, description, extracted_dir)
+            logger.info("run_publishers succeeded with (config, description, extracted_dir)")
+            return
+        except Exception as e:
+            logger.warning("run_publishers(config, description, extracted_dir) failed: %s", e)
+
+    # E) Permutation attempts (safe)
+    permutations = [
+        (description,),
+        (extracted_dir,),
+        (description, config),
+        (config, description),
+    ]
+    for cand in permutations:
+        try:
+            tried.append(f"run_publishers{cand}")
+            run_publishers(*cand)
+            logger.info("run_publishers succeeded with args %s", cand)
+            return
+        except Exception:
+            continue
+
+    # F) Last resort: no-arg
     try:
-        run_publishers(config=config)
-    except Exception:
-        logger.exception("All attempts to call run_publishers failed")
+        tried.append("run_publishers()")
+        run_publishers()
+        logger.info("run_publishers succeeded with no args")
+        return
+    except Exception as e:
+        logger.warning("run_publishers() last-resort call failed: %s", e)
+
+    logger.error("All attempts to call run_publishers failed. Tried: %s", tried)
 
 def run_all_streams_micro_engine(*args, **kwargs) -> None:
     try:
         config = _normalize_args_to_config(*args, **kwargs)
         logger.info("run_all_streams_micro_engine called. config: %s", config)
-
         try:
             _call_run_publishers_safely(config)
         except Exception:
             logger.exception("run_publishers failed in unified engine")
-
         try:
             run_other_handlers(config)
         except Exception:
             logger.exception("run_other_handlers failed in unified engine")
-
         logger.info("run_all_streams_micro_engine finished successfully")
     except Exception:
         logger.error("run_all_streams_micro_engine top-level failure:\\n%s", traceback.format_exc())
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    run_all_streams_micro_engine("factory_output/template-test.zip", "template-test", "https://localhost")
+    run_all_streams_micro_engine('factory_output/template-test.zip', 'template-test', 'https://localhost')
