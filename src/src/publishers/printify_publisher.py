@@ -1,9 +1,13 @@
-def publish_to_printify(title, description, zip_path):
-    """
-    Printify does not use zip_path yet,
-    but we accept it to keep interface consistent.
-    """
-    # TODO: use zip_path later if needed
-    print(f"🖨️ Printify publish skipped (no implementation yet): {title}")
-    return {"platform": "printify", "status": "skipped"}
+# src/src/publishers/printify_publisher.py
 
+def publish_to_printify(title, description, zip_path=None):
+    """
+    Printify does not use zip files directly.
+    zip_path is accepted for interface compatibility.
+    """
+    print(f"🖨️ Printify publish skipped (no ZIP upload required): {title}")
+    return {
+        "platform": "printify",
+        "status": "skipped",
+        "title": title,
+    }
