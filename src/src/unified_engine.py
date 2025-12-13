@@ -49,22 +49,23 @@ def _call_run_publishers_safely(description: str, extracted_dir: str, config: Di
 
 def run_all_streams_micro_engine(zip_path: str, template_name: str, backend_url: str):
     try:
-        config = {
+        description = template_name
+        file_path = zip_path  # ✅ THIS IS THE REAL ZIP FILE
+
+        logger.info(
+            "Publishing Gumroad product: title='%s', file='%s'",
+            description,
+            file_path,
+        )
+
+        # 🔥 HARD-CORRECT CALL
+        run_publishers(description, description, file_path)
+
+        run_other_handlers({
             "zip_path": zip_path,
             "template_name": template_name,
             "backend_url": backend_url,
-        }
-
-        description, extracted_dir = _infer_description_and_extracted_dir(config)
-
-        logger.info(
-            "Publishing with description='%s', extracted_dir='%s'",
-            description,
-            extracted_dir,
-        )
-
-        _call_run_publishers_safely(description, extracted_dir, config)
-        run_other_handlers(config)
+        })
 
         logger.info("run_all_streams_micro_engine completed successfully")
 
