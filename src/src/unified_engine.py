@@ -47,16 +47,20 @@ def _call_run_publishers_safely(description: str, extracted_dir: str, config: Di
     except Exception:
         logger.error("run_publishers failed:\n%s", traceback.format_exc())
 
-def run_all_streams_micro_engine(zip_path: str, template_name: str, backend_url: str):
-    try:
-        description = template_name
-        file_path = zip_path  # ✅ THIS IS THE REAL ZIP FILE
+def run_all_streams_micro_engine(zip_path, template_name, backend_url):
+    print("🚀 unified_engine START")
+    print("📦 ZIP =", zip_path)
+    print("🏷️ TEMPLATE =", template_name)
 
-        logger.info(
-            "Publishing Gumroad product: title='%s', file='%s'",
-            description,
-            file_path,
-        )
+    title = f"Template {template_name}"
+    description = f"Auto-generated template {template_name}"
+
+    # 🔥 FORCE publishing (no conditions)
+    print("📢 CALLING run_publishers")
+    run_publishers(title, description, zip_path)
+    print("📢 PUBLISHING FINISHED")
+
+    print("✅ unified_engine END")
 
         # 🔥 HARD-CORRECT CALL
         run_publishers(description, description, file_path)
