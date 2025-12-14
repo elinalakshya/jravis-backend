@@ -4,8 +4,8 @@ import os
 import logging
 
 from publishers.gumroad_publisher import publish_to_gumroad
-from publishers.payhip_publisher import publish_to_payhip
 from publishers.printify_publisher import publish_to_printify
+from publishers.payhip_publisher import publish_to_payhip
 
 logger = logging.getLogger(__name__)
 
