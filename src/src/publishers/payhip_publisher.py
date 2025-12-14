@@ -1,22 +1,33 @@
-import os, requests
+# src/src/publishers/payhip_publisher.py
 
-def publish_to_payhip(title, description, file_path):
+import os
+import requests
+
+
+def publish_to_payhip(title: str, description: str, zip_path: str):
+    """
+    Uploads a ZIP product to Payhip.
+    Contract: (title, description, zip_path)
+    """
     api_key = os.getenv("PAYHIP_API_KEY")
     if not api_key:
-        return {"ok": False, "reason": "Missing Payhip API key"}
+        raise RuntimeError("PAYHIP_API_KEY not set")
 
-    url = "https://payhip.com/api/v1/products/create"
-    payload = {
-        "name": title,
-        "description": description,
-        "price": 299,
-    }
+    if not os.path.isfile(zip_path):
+        raise FileNotFoundError(zip_path)
 
-    files = {"file": open(file_path, "rb")}
+    url = "https://payhip.com/api/v1/products"
     headers = {"Authorization": f"Bearer {api_key}"}
-    r = requests.post(url, data=payload, files=files, headers=headers)
 
-    try:
-        return {"ok": r.status_code in [200, 201], "platform": "Payhip", "response": r.json()}
-    except:
-        return {"ok": False, "response": r.text}
+    with open(zip_path, "rb") as f:
+        files = {"file": f}
+        data = {
+            "title": title,
+            "description": description,
+            "price": "5.00",
+        }
+
+        r = requests.post(url, headers=headers, data=data, files=files, timeout=60)
+        r.raise_for_status()
+
+    return {"platform": "payhip", "status": "success", "title": title}
