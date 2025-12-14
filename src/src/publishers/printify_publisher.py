@@ -1,12 +1,25 @@
 # src/src/publishers/printify_publisher.py
 
+import os
+
+
 def publish_to_printify(title: str, description: str, zip_path: str):
     """
-    Upload product to Printify
+    Placeholder for Printify automation.
+    Contract: (title, description, zip_path)
     """
-    # your printify logic here
+    api_key = os.getenv("PRINTIFY_API_KEY")
+    if not api_key:
+        raise RuntimeError("PRINTIFY_API_KEY not set")
+
+    if not os.path.isfile(zip_path):
+        raise FileNotFoundError(zip_path)
+
+    # NOTE: Printify requires product + variant logic.
+    # This stub ensures signature alignment without runtime crash.
     return {
         "platform": "printify",
-        "status": "success",
-        "title": title
+        "status": "queued",
+        "title": title,
+        "note": "Printify integration stub (safe)"
     }
