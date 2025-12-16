@@ -9,9 +9,12 @@ app = FastAPI()
 # -----------------------
 # PATHS
 # -----------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FACTORY_OUTPUT_DIR = os.path.join(BASE_DIR, "..", "factory_output")
+# FORCE Render project root
+PROJECT_ROOT = os.getcwd()
+FACTORY_OUTPUT_DIR = os.path.join(PROJECT_ROOT, "factory_output")
 os.makedirs(FACTORY_OUTPUT_DIR, exist_ok=True)
+
+print("📁 BACKEND FACTORY_OUTPUT_DIR =", FACTORY_OUTPUT_DIR)
 
 # -----------------------
 # HEALTH CHECK
