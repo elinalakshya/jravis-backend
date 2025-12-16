@@ -7,13 +7,13 @@ import zipfile
 app = FastAPI()
 
 # =====================================================
-# FORCE SINGLE, ABSOLUTE FACTORY OUTPUT DIRECTORY
+# ABSOLUTE, VERIFIED FACTORY DIRECTORY (RENDER SAFE)
 # =====================================================
-PROJECT_ROOT = "/opt/render/project/src"
-FACTORY_OUTPUT_DIR = os.path.join(PROJECT_ROOT, "factory_output")
+FACTORY_OUTPUT_DIR = "/opt/render/project/src/factory_output"
 os.makedirs(FACTORY_OUTPUT_DIR, exist_ok=True)
 
 print("📁 BACKEND FACTORY_OUTPUT_DIR =", FACTORY_OUTPUT_DIR)
+print("📂 DIR CONTENTS AT START =", os.listdir(FACTORY_OUTPUT_DIR))
 
 # -----------------------
 # HEALTH CHECK
@@ -30,19 +30,27 @@ def factory_generate():
     name = f"template-{uuid.uuid4().hex[:4]}"
     zip_path = os.path.join(FACTORY_OUTPUT_DIR, f"{name}.zip")
 
-    print("🧪 GENERATING ZIP AT:", zip_path)
+    print("🧪 ATTEMPTING ZIP CREATE:", zip_path)
 
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-        z.writestr("README.txt", "JRAVIS PACKAGE")
+    try:
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+            z.writestr("README.txt", "JRAVIS PACKAGE")
+    except Exception as e:
+        print("❌ ZIP WRITE FAILED:", e)
+        raise HTTPException(status_code=500, detail="ZIP write failed")
 
     # HARD VERIFY
     if not os.path.exists(zip_path):
-        raise HTTPException(status_code=500, detail="ZIP creation failed")
+        print("❌ ZIP NOT FOUND AFTER WRITE")
+        print("📂 DIR CONTENTS =", os.listdir(FACTORY_OUTPUT_DIR))
+        raise HTTPException(status_code=500, detail="ZIP missing after creation")
+
+    print("✅ ZIP CREATED:", zip_path)
+    print("📂 DIR CONTENTS =", os.listdir(FACTORY_OUTPUT_DIR))
 
     return {
         "status": "generated",
-        "name": name,
-        "zip": f"{name}.zip"
+        "name": name
     }
 
 # -----------------------
@@ -52,7 +60,8 @@ def factory_generate():
 def factory_download(name: str):
     zip_path = os.path.join(FACTORY_OUTPUT_DIR, f"{name}.zip")
 
-    print("📦 LOOKING FOR ZIP AT:", zip_path)
+    print("📦 DOWNLOAD CHECK:", zip_path)
+    print("📂 DIR CONTENTS =", os.listdir(FACTORY_OUTPUT_DIR))
 
     if not os.path.exists(zip_path):
         raise HTTPException(status_code=404, detail="ZIP not found")
