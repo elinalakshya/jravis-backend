@@ -11,16 +11,6 @@ def run_all_streams_micro_engine(
     template_name: str,
     backend_url: str,
 ):
-    """
-    Unified execution engine.
-    Called by JRAVIS worker after ZIP is streamed locally.
-
-    Args:
-        zip_path (str): local path to ZIP file
-        template_name (str): template name
-        backend_url (str): backend base URL
-    """
-
     print("🚀 UNIFIED ENGINE STARTED")
     print(f"📦 ZIP PATH      : {zip_path}")
     print(f"🧩 TEMPLATE NAME : {template_name}")
@@ -33,7 +23,7 @@ def run_all_streams_micro_engine(
     description = template_name
 
     try:
-        print("📤 STARTING PUBLISHING PIPELINE...")
+        print("📤 STARTING PUBLISHING PIPELINE")
         results = run_publishers(
             title=title,
             description=description,
@@ -43,8 +33,7 @@ def run_all_streams_micro_engine(
         print("📊 RESULTS:", results)
         return results
 
-    except Exception as e:
+    except Exception:
         print("❌ UNIFIED ENGINE FAILED")
         traceback.print_exc()
-        raise e
-
+        raise
