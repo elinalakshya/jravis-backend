@@ -1,38 +1,54 @@
-from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
-import io
-import zipfile
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+import os
 import uuid
+import zipfile
 
 app = FastAPI()
 
+# -----------------------
+# PATHS
+# -----------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FACTORY_OUTPUT_DIR = os.path.join(BASE_DIR, "..", "factory_output")
+os.makedirs(FACTORY_OUTPUT_DIR, exist_ok=True)
+
+# -----------------------
+# HEALTH CHECK
+# -----------------------
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
 
+# -----------------------
+# FACTORY GENERATE
+# -----------------------
 @app.post("/api/factory/generate")
-def generate_template():
-    """
-    Streams a ZIP file directly to the worker.
-    NO local filesystem dependency.
-    SAFE on Render.
-    """
-    template_name = f"template-{uuid.uuid4().hex[:4]}"
+def factory_generate():
+    name = f"template-{uuid.uuid4().hex[:4]}"
+    zip_path = os.path.join(FACTORY_OUTPUT_DIR, f"{name}.zip")
 
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as z:
-        z.writestr(
-            "README.txt",
-            f"JRAVIS generated template: {template_name}"
-        )
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("README.txt", "JRAVIS PACKAGE")
 
-    zip_buffer.seek(0)
+    return {
+        "status": "generated",
+        "name": name,
+        "zip": f"factory_output/{name}.zip"
+    }
 
-    return StreamingResponse(
-        zip_buffer,
+# -----------------------
+# FACTORY DOWNLOAD (CRITICAL)
+# -----------------------
+@app.get("/api/factory/download/{name}")
+def factory_download(name: str):
+    zip_path = os.path.join(FACTORY_OUTPUT_DIR, f"{name}.zip")
+
+    if not os.path.exists(zip_path):
+        raise HTTPException(status_code=404, detail="ZIP not found")
+
+    return FileResponse(
+        zip_path,
         media_type="application/zip",
-        headers={
-            "Content-Disposition": f'attachment; filename="{template_name}.zip"',
-            "X-Template-Name": template_name
-        }
+        filename=f"{name}.zip"
     )
