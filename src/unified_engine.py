@@ -1,36 +1,50 @@
+# src/unified_engine.py
+
 import os
 import traceback
 
-from src.publishing_engine import run_publishers
+from publishing_engine import run_publishers
 
 
-def run_all_streams_micro_engine(zip_path: str, title: str, backend: str):
+def run_all_streams_micro_engine(
+    zip_path: str,
+    template_name: str,
+    backend_url: str,
+):
     """
-    Main unified execution engine.
-    - Receives ZIP path
-    - Executes publishing pipelines
+    Unified execution engine.
+    Called by JRAVIS worker after ZIP is streamed locally.
+
+    Args:
+        zip_path (str): local path to ZIP file
+        template_name (str): template name
+        backend_url (str): backend base URL
     """
 
     print("🚀 UNIFIED ENGINE STARTED")
-    print(f"📦 ZIP      : {zip_path}")
-    print(f"📝 TITLE    : {title}")
-    print(f"🌐 BACKEND  : {backend}")
+    print(f"📦 ZIP PATH      : {zip_path}")
+    print(f"🧩 TEMPLATE NAME : {template_name}")
+    print(f"🌐 BACKEND URL   : {backend_url}")
 
-    if not os.path.isfile(zip_path):
-        raise FileNotFoundError(f"ZIP not found: {zip_path}")
+    if not zip_path or not os.path.isfile(zip_path):
+        raise FileNotFoundError(f"ZIP file not found: {zip_path}")
+
+    title = template_name
+    description = template_name
 
     try:
-        print("📤 Publishing started...")
+        print("📤 STARTING PUBLISHING PIPELINE...")
         results = run_publishers(
             title=title,
-            description=title,
-            zip_path=zip_path
+            description=description,
+            zip_path=zip_path,
         )
-        print("✅ Publishing completed:", results)
+        print("✅ PUBLISHING COMPLETED")
+        print("📊 RESULTS:", results)
         return results
 
     except Exception as e:
-        print("❌ PUBLISHING FAILED")
+        print("❌ UNIFIED ENGINE FAILED")
         traceback.print_exc()
         raise e
 
