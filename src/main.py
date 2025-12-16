@@ -6,11 +6,10 @@ import zipfile
 
 app = FastAPI()
 
-# -----------------------
-# PATHS
-# -----------------------
-# FORCE Render project root
-PROJECT_ROOT = os.getcwd()
+# =====================================================
+# FORCE SINGLE, ABSOLUTE FACTORY OUTPUT DIRECTORY
+# =====================================================
+PROJECT_ROOT = "/opt/render/project/src"
 FACTORY_OUTPUT_DIR = os.path.join(PROJECT_ROOT, "factory_output")
 os.makedirs(FACTORY_OUTPUT_DIR, exist_ok=True)
 
@@ -31,21 +30,29 @@ def factory_generate():
     name = f"template-{uuid.uuid4().hex[:4]}"
     zip_path = os.path.join(FACTORY_OUTPUT_DIR, f"{name}.zip")
 
+    print("🧪 GENERATING ZIP AT:", zip_path)
+
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("README.txt", "JRAVIS PACKAGE")
+
+    # HARD VERIFY
+    if not os.path.exists(zip_path):
+        raise HTTPException(status_code=500, detail="ZIP creation failed")
 
     return {
         "status": "generated",
         "name": name,
-        "zip": f"factory_output/{name}.zip"
+        "zip": f"{name}.zip"
     }
 
 # -----------------------
-# FACTORY DOWNLOAD (CRITICAL)
+# FACTORY DOWNLOAD
 # -----------------------
 @app.get("/api/factory/download/{name}")
 def factory_download(name: str):
     zip_path = os.path.join(FACTORY_OUTPUT_DIR, f"{name}.zip")
+
+    print("📦 LOOKING FOR ZIP AT:", zip_path)
 
     if not os.path.exists(zip_path):
         raise HTTPException(status_code=404, detail="ZIP not found")
