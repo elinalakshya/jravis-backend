@@ -53,3 +53,33 @@ def generate_and_save_template_draft():
     draft = generate_template_draft()
     path = save_draft(draft)
     return draft, path
+
+def generate_batch_templates(count: int = 10):
+    results = []
+
+    for _ in range(count):
+        draft = generate_template_draft()
+        path = save_draft(draft)
+        results.append({
+            "id": draft["id"],
+            "title": draft["title"],
+            "path": path
+        })
+
+    return results
+
+
+def generate_batch_templates(count: int = 10):
+    results = []
+
+    for _ in range(count):
+        draft = generate_template_draft()
+        path = save_draft(draft)
+
+        results.append({
+            "id": draft["id"],
+            "title": draft["title"],
+            "path": path
+        })
+
+    return results
