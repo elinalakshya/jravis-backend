@@ -5,13 +5,11 @@ app = FastAPI(title="JRAVIS Backend", version="1.0")
 
 from draft_engine import generate_and_save_template_draft
 
-@app.post("/drafts/templates/generate")
-def generate_template():
-    draft, path = generate_and_save_template_draft()
+@app.post("/api/factory/generate")
+def legacy_factory_disabled():
     return {
-        "status": "success",
-        "path": path,
-        "draft": draft
+        "status": "disabled",
+        "message": "Legacy factory endpoint disabled. Use /drafts/templates/generate"
     }
 
 @app.get("/")
@@ -29,4 +27,3 @@ def ping():
 @app.get("/healthz")
 def healthz():
     return {"status": "healthy"}
-    
