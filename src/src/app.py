@@ -3,6 +3,16 @@ import os
 
 app = FastAPI(title="JRAVIS Backend", version="1.0")
 
+from draft_engine import generate_and_save_template_draft
+
+@app.post("/drafts/templates/generate")
+def generate_template():
+    draft, path = generate_and_save_template_draft()
+    return {
+        "status": "success",
+        "path": path,
+        "draft": draft
+    }
 
 @app.get("/")
 def health():
