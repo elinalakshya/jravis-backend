@@ -12,6 +12,18 @@ def legacy_factory_disabled():
         "message": "Legacy factory endpoint disabled. Use /drafts/templates/generate"
     }
 
+
+# Backup route (API prefixed)
+@app.post("/api/drafts/templates/generate")
+def generate_template_api():
+    draft, path = generate_and_save_template_draft()
+    return {
+        "status": "success",
+        "path": path,
+        "draft": draft
+    }
+
+
 @app.get("/")
 def health():
     return {
