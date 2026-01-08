@@ -12,7 +12,11 @@ def health():
         "env": os.getenv("ENV", "prod")
     }
 
-
 @app.get("/ping")
 def ping():
     return {"message": "JRAVIS is alive 🚀"}
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "healthy"}
+    
