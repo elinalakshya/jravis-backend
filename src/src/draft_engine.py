@@ -48,33 +48,32 @@ def save_draft(draft: dict):
 
     return filepath
 
-
 def generate_and_save_template_draft():
     draft = generate_template_draft()
     path = save_draft(draft)
+
+    print("✅ DRAFT GENERATED")
+    print("ID:", draft["id"])
+    print("TITLE:", draft["title"])
+    print("PATH:", path)
+    print("------------------------------")
+
     return draft, path
 
-def generate_batch_templates(count: int = 10):
-    results = []
-
-    for _ in range(count):
-        draft = generate_template_draft()
-        path = save_draft(draft)
-        results.append({
-            "id": draft["id"],
-            "title": draft["title"],
-            "path": path
-        })
-
-    return results
-
 
 def generate_batch_templates(count: int = 10):
     results = []
 
-    for _ in range(count):
+    print(f"🚀 BATCH GENERATION STARTED | Count = {count}")
+
+    for i in range(count):
         draft = generate_template_draft()
         path = save_draft(draft)
+
+        print(f"📝 Draft {i+1}/{count}")
+        print("   ID:", draft["id"])
+        print("   TITLE:", draft["title"])
+        print("   PATH:", path)
 
         results.append({
             "id": draft["id"],
@@ -82,4 +81,8 @@ def generate_batch_templates(count: int = 10):
             "path": path
         })
 
+    print("✅ BATCH COMPLETED")
+    print("==============================")
+
     return results
+
