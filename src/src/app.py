@@ -1,6 +1,7 @@
 from product_builder import build_product_from_draft
 from fastapi import FastAPI, Query
 import os
+from listing_engine import generate_listing_from_product
 from draft_engine import (
     generate_and_save_template_draft,
     generate_batch_templates
@@ -50,4 +51,12 @@ def build_product(draft_id: str):
     return {
         "status": "success",
         "product": metadata
+    }
+
+@app.post("/api/listings/generate")
+def generate_listing(product_id: str):
+    listing = generate_listing_from_product(product_id)
+    return {
+        "status": "success",
+        "listing": listing
     }
