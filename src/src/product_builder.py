@@ -5,14 +5,14 @@ import logging
 from datetime import datetime
 
 # ---------------------------------------------------------
-# CONFIG
+# HARD FIXED PATHS (Render-safe)
 # ---------------------------------------------------------
 
-# Render safe project root
-PROJECT_ROOT = os.getenv("PROJECT_ROOT", "/opt/render/project/src")
+# Absolute root used by Render containers
+BASE_ROOT = "/opt/render/project/src"
 
-DRAFT_DIR = os.path.join(PROJECT_ROOT, "data", "drafts", "templates")
-PRODUCT_DIR = os.path.join(PROJECT_ROOT, "data", "products")
+DRAFT_DIR = os.path.join(BASE_ROOT, "data", "drafts", "templates")
+PRODUCT_DIR = os.path.join(BASE_ROOT, "data", "products")
 
 os.makedirs(PRODUCT_DIR, exist_ok=True)
 
@@ -29,7 +29,17 @@ def load_draft(draft_id: str) -> dict:
     """
     path = os.path.join(DRAFT_DIR, f"{draft_id}.json")
 
+    logging.info(f"🔍 Looking for Draft → {path}")
+
     if not os.path.exists(path):
+        # Debug visibility
+        existing = []
+        if os.path.exists(DRAFT_DIR):
+            existing = os.listdir(DRAFT_DIR)
+
+        logging.error(f"❌ Draft not found at {path}")
+        logging.error(f"📂 Available drafts: {existing}")
+
         raise FileNotFoundError(f"Draft not found: {path}")
 
     with open(path, "r", encoding="utf-8") as f:
@@ -90,7 +100,7 @@ def build_product_from_draft(draft_id: str) -> dict:
 
 
 # ---------------------------------------------------------
-# INTELLIGENCE LAYERS (simple rules now — upgrade later)
+# INTELLIGENCE LAYERS
 # ---------------------------------------------------------
 
 def infer_category(draft: dict) -> str:
@@ -109,9 +119,6 @@ def infer_category(draft: dict) -> str:
 
 
 def infer_platforms(draft: dict) -> list:
-    """
-    Decide where this product should be listed.
-    """
     platforms = ["gumroad", "payhip"]
 
     title = (draft.get("title") or "").lower()
@@ -126,9 +133,6 @@ def infer_platforms(draft: dict) -> list:
 
 
 def infer_assets(draft: dict) -> list:
-    """
-    Decide what assets must be created later.
-    """
     assets = ["cover_image", "product_description", "preview_images"]
 
     title = (draft.get("title") or "").lower()
