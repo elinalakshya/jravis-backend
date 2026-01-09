@@ -1,23 +1,33 @@
-import json
 import os
+import json
+import uuid
+import logging
 from datetime import datetime
-from uuid import uuid4
+from pathlib import Path
 
+# -----------------------------
+# Logging Setup
+# -----------------------------
+logging.basicConfig(level=logging.INFO)
 
-DRAFT_BASE_PATH = "/opt/render/project/src/data/drafts"
+# -----------------------------
+# Storage Path
+# -----------------------------
+BASE_DIR = Path("/opt/render/project/src/data/drafts/templates")
+BASE_DIR.mkdir(parents=True, exist_ok=True)
 
-
-def ensure_dirs():
-    os.makedirs(DRAFT_BASE_PATH + "/templates", exist_ok=True)
-
-
+# -----------------------------
+# Draft Generator
+# -----------------------------
 def generate_template_draft():
     """
-    Generates a dummy template draft.
-    Later we connect AI generation here.
+    Generates a single template draft dictionary
     """
+
+    draft_id = str(uuid.uuid4())
+
     draft = {
-        "id": str(uuid4()),
+        "id": draft_id,
         "stream": "template",
         "title": "Minimal Productivity Dashboard",
         "subtitle": "Track daily focus, habits, and goals",
@@ -34,55 +44,45 @@ def generate_template_draft():
         "generated_at": datetime.utcnow().isoformat()
     }
 
+    logging.info(f"🧠 Draft Generated | ID={draft_id} | Title={draft['title']}")
+
     return draft
 
 
-def save_draft(draft: dict):
-    ensure_dirs()
-
-    filename = f"{draft['id']}.json"
-    filepath = f"{DRAFT_BASE_PATH}/templates/{filename}"
-
-    with open(filepath, "w") as f:
-        json.dump(draft, f, indent=2)
-
-    return filepath
-
+# -----------------------------
+# Save Single Draft
+# -----------------------------
 def generate_and_save_template_draft():
     draft = generate_template_draft()
-    path = save_draft(draft)
 
-    print("✅ DRAFT GENERATED")
-    print("ID:", draft["id"])
-    print("TITLE:", draft["title"])
-    print("PATH:", path)
-    print("------------------------------")
+    file_path = BASE_DIR / f"{draft['id']}.json"
+    with open(file_path, "w") as f:
+        json.dump(draft, f, indent=2)
 
-    return draft, path
+    logging.info(f"💾 Draft Saved → {file_path}")
+
+    return draft, str(file_path)
 
 
+# -----------------------------
+# Batch Generator
+# -----------------------------
 def generate_batch_templates(count: int = 10):
+    """
+    Generates multiple drafts in batch
+    """
+
     results = []
 
-    print(f"🚀 BATCH GENERATION STARTED | Count = {count}")
-
     for i in range(count):
-        draft = generate_template_draft()
-        path = save_draft(draft)
-
-        print(f"📝 Draft {i+1}/{count}")
-        print("   ID:", draft["id"])
-        print("   TITLE:", draft["title"])
-        print("   PATH:", path)
-
+        draft, path = generate_and_save_template_draft()
         results.append({
             "id": draft["id"],
             "title": draft["title"],
             "path": path
         })
 
-    print("✅ BATCH COMPLETED")
-    print("==============================")
+    logging.info(f"🚀 Batch Generated → {len(results)} drafts")
 
     return results
 
