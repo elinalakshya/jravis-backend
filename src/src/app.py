@@ -1,3 +1,4 @@
+from product_builder import build_product_from_draft
 from fastapi import FastAPI, Query
 import os
 from draft_engine import (
@@ -43,3 +44,10 @@ def generate_batch(count: int = Query(5, ge=1, le=50)):
         "items": items
     }
 
+@app.post("/api/products/build")
+def build_product(draft_id: str):
+    metadata = build_product_from_draft(draft_id)
+    return {
+        "status": "success",
+        "product": metadata
+    }
