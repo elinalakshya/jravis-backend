@@ -1,142 +1,146 @@
 import os
 import json
+import uuid
+import logging
+from datetime import datetime
 
-PROJECT_ROOT = os.getenv(
-    "PROJECT_ROOT",
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-)
+# ---------------------------------------------------------
+# CONFIG
+# ---------------------------------------------------------
 
-DRAFTS_DIR = os.path.join(PROJECT_ROOT, "data", "drafts", "templates")
-PRODUCTS_DIR = os.path.join(PROJECT_ROOT, "data", "products")
+# Render safe project root
+PROJECT_ROOT = os.getenv("PROJECT_ROOT", "/opt/render/project/src")
 
-os.makedirs(PRODUCTS_DIR, exist_ok=True)
+DRAFT_DIR = os.path.join(PROJECT_ROOT, "data", "drafts", "templates")
+PRODUCT_DIR = os.path.join(PROJECT_ROOT, "data", "products")
+
+os.makedirs(PRODUCT_DIR, exist_ok=True)
+
+logging.basicConfig(level=logging.INFO)
 
 
-def load_draft(draft_id: str):
-    path = os.path.join(DRAFTS_DIR, f"{draft_id}.json")
+# ---------------------------------------------------------
+# UTILITIES
+# ---------------------------------------------------------
+
+def load_draft(draft_id: str) -> dict:
+    """
+    Load draft JSON from disk safely.
+    """
+    path = os.path.join(DRAFT_DIR, f"{draft_id}.json")
+
     if not os.path.exists(path):
         raise FileNotFoundError(f"Draft not found: {path}")
 
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-# ---------------------------
-# Product Builders
-# ---------------------------
+def save_product(product: dict) -> str:
+    """
+    Save product metadata to disk.
+    """
+    product_id = product["id"]
+    path = os.path.join(PRODUCT_DIR, f"{product_id}.json")
 
-def build_excel_product(draft, product_path):
-    import openpyxl
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(product, f, indent=2)
 
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Tracker"
-
-    ws["A1"] = draft["title"]
-    ws["A3"] = "Date"
-    ws["B3"] = "Task"
-    ws["C3"] = "Status"
-    ws["D3"] = "Notes"
-
-    for i in range(4, 100):
-        ws[f"A{i}"] = ""
-        ws[f"B{i}"] = ""
-        ws[f"C{i}"] = ""
-        ws[f"D{i}"] = ""
-
-    file_path = os.path.join(product_path, "tracker.xlsx")
-    wb.save(file_path)
-
-    return file_path
+    logging.info(f"📦 Product Saved → {path}")
+    return path
 
 
-def build_printable_product(draft, product_path):
-    from reportlab.lib.pagesizes import A4
-    from reportlab.pdfgen import canvas
+# ---------------------------------------------------------
+# CORE ENGINE
+# ---------------------------------------------------------
 
-    file_path = os.path.join(product_path, "printable.pdf")
-    c = canvas.Canvas(file_path, pagesize=A4)
+def build_product_from_draft(draft_id: str) -> dict:
+    """
+    Convert a Draft into a Product entity.
+    """
 
-    text = c.beginText(50, 800)
-    text.setFont("Helvetica", 12)
-    text.textLine(draft["title"])
-    text.textLine("")
-    text.textLine(draft["description"])
-    text.textLine("")
-    text.textLine("Features:")
-    for f in draft.get("features", []):
-        text.textLine(f"- {f}")
-
-    c.drawText(text)
-    c.save()
-
-    return file_path
-
-
-def build_canva_product(draft, product_path):
-    file_path = os.path.join(product_path, "canva_template.txt")
-    with open(file_path, "w") as f:
-        f.write(f"CANVA TEMPLATE PLACEHOLDER\n\n{json.dumps(draft, indent=2)}")
-
-    return file_path
-
-
-def build_notion_product(draft, product_path):
-    file_path = os.path.join(product_path, "notion_template.md")
-    with open(file_path, "w") as f:
-        f.write(f"# {draft['title']}\n\n")
-        f.write(f"{draft['description']}\n\n")
-        f.write("## Features\n")
-        for feature in draft.get("features", []):
-            f.write(f"- {feature}\n")
-
-    return file_path
-
-
-# ---------------------------
-# Main Builder
-# ---------------------------
-
-def build_product_from_draft(draft_id: str):
     draft = load_draft(draft_id)
 
     product_id = str(uuid.uuid4())
-    slug = draft["title"].lower().replace(" ", "_")[:40]
-    product_path = os.path.join(PRODUCT_DIR, f"{slug}_{product_id}")
-    os.makedirs(product_path, exist_ok=True)
 
-    title = draft["title"].lower()
-
-    if "excel" in title:
-        artifact = build_excel_product(draft, product_path)
-        product_type = "excel"
-
-    elif "printable" in title or "planner" in title:
-        artifact = build_printable_product(draft, product_path)
-        product_type = "printable"
-
-    elif "canva" in title:
-        artifact = build_canva_product(draft, product_path)
-        product_type = "canva"
-
-    elif "notion" in title:
-        artifact = build_notion_product(draft, product_path)
-        product_type = "notion"
-
-    else:
-        artifact = build_notion_product(draft, product_path)
-        product_type = "generic"
-
-    metadata = {
-        "product_id": product_id,
-        "draft_id": draft_id,
-        "title": draft["title"],
-        "type": product_type,
-        "artifact": artifact,
+    product = {
+        "id": product_id,
+        "source_draft_id": draft_id,
+        "title": draft.get("title"),
+        "subtitle": draft.get("subtitle"),
+        "description": draft.get("description"),
+        "features": draft.get("features", []),
+        "tags": draft.get("tags", []),
+        "target_customer": draft.get("target_customer"),
+        "price_suggestion": draft.get("price_suggestion"),
+        "category": infer_category(draft),
+        "platform_targets": infer_platforms(draft),
+        "assets_required": infer_assets(draft),
+        "status": "ready_for_listing",
         "created_at": datetime.utcnow().isoformat()
     }
 
-    with open(os.path.join(product_path, "product.json"), "w") as f:
-        json.dump(metadata, f, indent=2)
+    save_product(product)
 
-    return metadata
+    logging.info(
+        f"🚀 Product Built | ID={product_id} | Title={product['title']}"
+    )
+
+    return product
+
+
+# ---------------------------------------------------------
+# INTELLIGENCE LAYERS (simple rules now — upgrade later)
+# ---------------------------------------------------------
+
+def infer_category(draft: dict) -> str:
+    title = (draft.get("title") or "").lower()
+
+    if "notion" in title:
+        return "Notion Templates"
+    if "excel" in title:
+        return "Excel Tools"
+    if "planner" in title or "printable" in title:
+        return "Printables"
+    if "canva" in title:
+        return "Canva Templates"
+
+    return "Digital Products"
+
+
+def infer_platforms(draft: dict) -> list:
+    """
+    Decide where this product should be listed.
+    """
+    platforms = ["gumroad", "payhip"]
+
+    title = (draft.get("title") or "").lower()
+
+    if "printable" in title or "planner" in title:
+        platforms.append("etsy")
+
+    if "notion" in title or "canva" in title:
+        platforms.append("etsy")
+
+    return list(set(platforms))
+
+
+def infer_assets(draft: dict) -> list:
+    """
+    Decide what assets must be created later.
+    """
+    assets = ["cover_image", "product_description", "preview_images"]
+
+    title = (draft.get("title") or "").lower()
+
+    if "excel" in title:
+        assets.append("xlsx_template")
+
+    if "notion" in title:
+        assets.append("notion_template")
+
+    if "printable" in title:
+        assets.append("pdf_printable")
+
+    return assets
+
