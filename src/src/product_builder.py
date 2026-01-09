@@ -1,22 +1,19 @@
 import os
 import json
-import uuid
-from datetime import datetime
 
-BASE_DIR = os.path.dirname(__file__)
-DATA_DIR = os.path.join(BASE_DIR, "data")
-DRAFT_DIR = os.path.join(DATA_DIR, "drafts", "templates")
-PRODUCT_DIR = os.path.join(DATA_DIR, "products")
+PROJECT_ROOT = os.getenv(
+    "PROJECT_ROOT",
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+)
 
-os.makedirs(PRODUCT_DIR, exist_ok=True)
+DRAFTS_DIR = os.path.join(PROJECT_ROOT, "data", "drafts", "templates")
+PRODUCTS_DIR = os.path.join(PROJECT_ROOT, "data", "products")
 
+os.makedirs(PRODUCTS_DIR, exist_ok=True)
 
-# ---------------------------
-# Load Draft
-# ---------------------------
 
 def load_draft(draft_id: str):
-    path = os.path.join(DRAFT_DIR, f"{draft_id}.json")
+    path = os.path.join(DRAFTS_DIR, f"{draft_id}.json")
     if not os.path.exists(path):
         raise FileNotFoundError(f"Draft not found: {path}")
 
