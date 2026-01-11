@@ -8,30 +8,44 @@ logging.basicConfig(level=logging.INFO)
 
 
 # ======================================================
-# 🔎 SAFE DATA ROOT DETECTION (NO HARD PATH ASSUMPTIONS)
+# 📁 DATA ROOT RESOLUTION (SAFE FOR RENDER / DOCKER)
 # ======================================================
 
-def find_data_root() -> Path:
+def resolve_data_root() -> Path:
     """
-    Walk upward from this file until we find a folder named 'data'.
-    This works reliably across local, Docker, Render, CI, etc.
+    Resolve a writable data directory safely.
+    Priority:
+    1. If /opt/render/project/src/data exists → use it
+    2. Else create ./data relative to project root
+    3. Never crash the app
     """
-    current = Path(__file__).resolve()
 
-    for parent in current.parents:
-        candidate = parent / "data"
-        if candidate.exists():
-            logging.info(f"📁 Data root detected at: {candidate}")
-            return candidate
+    # Common Render path
+    render_path = Path("/opt/render/project/src/data")
 
-    raise RuntimeError("❌ Could not locate data directory in project tree")
+    if render_path.exists():
+        logging.info(f"📁 Using Render data path: {render_path}")
+        return render_path
+
+    # Fallback → create local data directory
+    local_path = Path(__file__).resolve().parents[2] / "data"
+    local_path.mkdir(parents=True, exist_ok=True)
+
+    logging.warning(f"⚠️ Render data path not found. Using local data path: {local_path}")
+    return local_path
 
 
-DATA_ROOT = find_data_root()
+DATA_ROOT = resolve_data_root()
+
 DRAFT_DIR = DATA_ROOT / "drafts" / "templates"
 PRODUCT_DIR = DATA_ROOT / "products"
 
+# Ensure directories always exist
+DRAFT_DIR.mkdir(parents=True, exist_ok=True)
 PRODUCT_DIR.mkdir(parents=True, exist_ok=True)
+
+logging.info(f"📂 Draft dir  → {DRAFT_DIR}")
+logging.info(f"📦 Product dir → {PRODUCT_DIR}")
 
 
 # ======================================================
@@ -39,11 +53,8 @@ PRODUCT_DIR.mkdir(parents=True, exist_ok=True)
 # ======================================================
 
 def load_draft(draft_id: str) -> dict:
-    """
-    Load a draft JSON file by ID.
-    """
     path = DRAFT_DIR / f"{draft_id}.json"
-    logging.info(f"📂 Loading draft from: {path}")
+    logging.info(f"📂 Loading draft: {path}")
 
     if not path.exists():
         raise FileNotFoundError(f"Draft not found: {path}")
@@ -53,13 +64,10 @@ def load_draft(draft_id: str) -> dict:
 
 
 # ======================================================
-# 🏗️ PRODUCT BUILDER CORE
+# 🏗️ PRODUCT BUILDER
 # ======================================================
 
 def build_product_from_draft(draft_id: str) -> dict:
-    """
-    Convert a draft into a sellable product object.
-    """
     logging.info(f"🚀 Building product from draft: {draft_id}")
 
     draft = load_draft(draft_id)
@@ -67,9 +75,6 @@ def build_product_from_draft(draft_id: str) -> dict:
     product_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
 
-    # -------------------------
-    # Product normalization
-    # -------------------------
     product = {
         "id": product_id,
         "source_draft_id": draft_id,
@@ -82,22 +87,19 @@ def build_product_from_draft(draft_id: str) -> dict:
         "price_suggestion": draft.get("price_suggestion"),
         "stream": draft.get("stream", "template"),
 
-        # Product system fields
+        # System fields
         "sku": f"JRAVIS-{product_id[:8].upper()}",
         "currency": "USD",
         "status": "draft",
         "created_at": now,
         "updated_at": now,
 
-        # Marketplace readiness flags
+        # Pipeline flags
         "assets_ready": False,
         "listing_ready": False,
         "published": False,
     }
 
-    # -------------------------
-    # Save product file
-    # -------------------------
     product_path = PRODUCT_DIR / f"{product_id}.json"
     with open(product_path, "w", encoding="utf-8") as f:
         json.dump(product, f, indent=2)
@@ -115,17 +117,14 @@ def build_product_from_draft(draft_id: str) -> dict:
 
 
 # ======================================================
-# 🧪 LOCAL TEST MODE
+# 🧪 LOCAL TEST
 # ======================================================
 
 if __name__ == "__main__":
-    # Example manual test:
     test_draft_id = "PUT_DRAFT_ID_HERE"
 
     try:
         result = build_product_from_draft(test_draft_id)
-        print("✅ Product build result:")
         print(json.dumps(result, indent=2))
     except Exception as e:
         logging.exception("❌ Product build failed")
-
