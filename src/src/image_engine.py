@@ -1,63 +1,96 @@
 import os
+import json
+import logging
 from PIL import Image, ImageDraw, ImageFont
-from typing import Dict
 
-# Base image directory
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-IMAGE_DIR = os.path.join(BASE_DIR, "data", "images")
+from db import get_db
+
+logging.basicConfig(level=logging.INFO)
+
+IMAGE_DIR = "/opt/render/project/src/data/images"
 os.makedirs(IMAGE_DIR, exist_ok=True)
 
 
-def generate_product_image(product: Dict) -> str:
-    """
-    Generates a simple branded product image and returns image path.
-    """
+# ---------------------------------------------------
+# Generate image for a single product
+# ---------------------------------------------------
 
-    width, height = 1024, 1024
-    bg_color = (245, 247, 250)   # light gray
-    text_color = (20, 20, 20)
+def generate_image_for_product(product_id: str) -> str:
+    conn = get_db()
+    cur = conn.cursor()
 
-    img = Image.new("RGB", (width, height), bg_color)
+    cur.execute("SELECT payload FROM products WHERE id=?", (product_id,))
+    row = cur.fetchone()
+
+    if not row:
+        conn.close()
+        raise Exception(f"❌ Product not found: {product_id}")
+
+    product = json.loads(row[0])
+    title = product.get("title", "JRAVIS PRODUCT")
+
+    # Create simple image
+    img = Image.new("RGB", (800, 800), color=(245, 245, 245))
     draw = ImageDraw.Draw(img)
 
-    # Try default font
     try:
-        font_title = ImageFont.truetype("DejaVuSans-Bold.ttf", 64)
-        font_small = ImageFont.truetype("DejaVuSans.ttf", 36)
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 36)
     except:
-        font_title = ImageFont.load_default()
-        font_small = ImageFont.load_default()
+        font = ImageFont.load_default()
 
-    title = product.get("title", "Digital Product")
-    price = f"₹{product.get('price', '')}"
+    draw.multiline_text(
+        (40, 300),
+        title,
+        fill=(20, 20, 20),
+        font=font,
+        spacing=8
+    )
 
-    # Draw title (wrapped manually)
-    y = 200
-    max_width = 900
-    words = title.split(" ")
-    line = ""
+    image_path = os.path.join(IMAGE_DIR, f"{product_id}.png")
+    img.save(image_path)
 
-    for word in words:
-        test_line = f"{line} {word}".strip()
-        bbox = draw.textbbox((0, 0), test_line, font=font_title)
-        if bbox[2] > max_width:
-            draw.text((60, y), line, fill=text_color, font=font_title)
-            y += 80
-            line = word
-        else:
-            line = test_line
+    conn.close()
 
-    if line:
-        draw.text((60, y), line, fill=text_color, font=font_title)
+    logging.info(f"🖼️ Image generated: {image_path}")
 
-    # Footer
-    draw.text((60, 850), "JRAVIS DIGITAL", fill=(80, 80, 80), font=font_small)
-    draw.text((60, 900), price, fill=(40, 40, 40), font=font_small)
+    return image_path
 
-    # Save image
-    filename = f"{product['product_id']}.png"
-    path = os.path.join(IMAGE_DIR, filename)
-    img.save(path, "PNG")
 
-    print("🖼️ Image generated:", path)
-    return path
+# ---------------------------------------------------
+# Generate images for all products
+# ---------------------------------------------------
+
+def generate_images_for_all_products():
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM products")
+    rows = cur.fetchall()
+
+    generated = []
+    skipped = 0
+
+    for (product_id,) in rows:
+        image_path = os.path.join(IMAGE_DIR, f"{product_id}.png")
+
+        if os.path.exists(image_path):
+            skipped += 1
+            continue
+
+        try:
+            path = generate_image_for_product(product_id)
+            generated.append({
+                "product_id": product_id,
+                "image_path": path
+            })
+        except Exception as e:
+            logging.error(f"❌ Failed generating image for {product_id}: {e}")
+
+    conn.close()
+
+    return {
+        "generated": len(generated),
+        "skipped": skipped,
+        "images": generated
+}
+
