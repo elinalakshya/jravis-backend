@@ -4,7 +4,7 @@ from typing import Dict
 import re
 
 GUMROAD_API_KEY = os.getenv("GUMROAD_API_KEY")
-GUMROAD_API_URL = "https://api.gumroad.com/v2/products"
+GUMROAD_API_URL = "https://api.gumroad.com/v2/products.json"
 
 
 def slugify(text: str) -> str:
