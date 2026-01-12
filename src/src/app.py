@@ -1,3 +1,4 @@
+from gumroad_publisher import publish_to_gumroad
 from image_engine import generate_product_image
 from product_factory import generate_product
 from fastapi import FastAPI, HTTPException
@@ -243,4 +244,98 @@ def generate_images_all():
         "generated": len(generated),
         "skipped": len(skipped),
         "images": generated
+    }
+
+# ---------------------------------------------------
+# Gumroad Publisher API
+# ---------------------------------------------------
+
+@app.post("/api/publish/gumroad")
+def publish_gumroad(product_id: str):
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
+        row = cur.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        product = json.loads(row["payload"])
+
+        gumroad_product = publish_to_gumroad(product)
+
+        # Save gumroad info
+        product["gumroad_id"] = gumroad_product.get("id")
+        product["gumroad_url"] = gumroad_product.get("short_url")
+
+        cur.execute(
+            "UPDATE products SET payload = ? WHERE id = ?",
+            (json.dumps(product), product_id)
+        )
+
+        conn.commit()
+        conn.close()
+
+        return {
+            "status": "success",
+            "product_id": product_id,
+            "gumroad_url": product["gumroad_url"]
+        }
+
+    except Exception as e:
+        logging.exception("❌ Gumroad publish failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/publish/gumroad_all")
+def publish_all_gumroad():
+    """
+    Publish all products that are not yet on Gumroad.
+    """
+
+    published = []
+    skipped = []
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT id, payload FROM products")
+        rows = cur.fetchall()
+
+        for row in rows:
+            product_id = row["id"]
+            product = json.loads(row["payload"])
+
+            if product.get("gumroad_id"):
+                skipped.append(product_id)
+                continue
+
+            gumroad_product = publish_to_gumroad(product)
+            product["gumroad_id"] = gumroad_product.get("id")
+            product["gumroad_url"] = gumroad_product.get("short_url")
+
+            cur.execute(
+                "UPDATE products SET payload = ? WHERE id = ?",
+                (json.dumps(product), product_id)
+            )
+
+            published.append({
+                "product_id": product_id,
+                "url": product["gumroad_url"]
+            })
+
+        conn.commit()
+        conn.close()
+
+    except Exception as e:
+        logging.exception("❌ Bulk Gumroad publish failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {
+        "status": "success",
+        "published": len(published),
+        "skipped": len(skipped),
+        "products": published
     }
