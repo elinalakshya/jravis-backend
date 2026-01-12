@@ -1,3 +1,4 @@
+from image_engine import generate_product_image
 from product_factory import generate_product
 from fastapi import FastAPI, HTTPException
 from typing import Dict, Any
@@ -144,3 +145,43 @@ def bulk_generate_products(count: int = 10):
         "count": len(created),
         "products": created
     }
+
+# ---------------------------------------------------
+# Product Image Generator API
+# ---------------------------------------------------
+
+@app.post("/api/products/generate_image")
+def generate_image(product_id: str):
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
+        row = cur.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        product = json.loads(row["payload"])
+
+        image_path = generate_product_image(product)
+        product["image_path"] = image_path
+
+        # Update DB with image path
+        cur.execute(
+            "UPDATE products SET payload = ? WHERE id = ?",
+            (json.dumps(product), product_id)
+        )
+
+        conn.commit()
+        conn.close()
+
+        return {
+            "status": "success",
+            "product_id": product_id,
+            "image_path": image_path
+        }
+
+    except Exception as e:
+        logging.exception("❌ Image generation failed")
+        raise HTTPException(status_code=500, detail=str(e))
