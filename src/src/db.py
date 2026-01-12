@@ -1,35 +1,36 @@
 import sqlite3
 import os
+import json
+import logging
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-DB_PATH = os.path.join(BASE_DIR, "data", "jravis.db")
+DB_PATH = os.getenv("DB_PATH", "/opt/render/project/src/data/jravis.db")
 
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+logging.basicConfig(level=logging.INFO)
 
 
 def init_db():
-    conn = get_db()
-    cur = conn.cursor()
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
-    # Drafts table
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS drafts (
-            id TEXT PRIMARY KEY,
-            payload TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
 
     # Products table
     cur.execute("""
         CREATE TABLE IF NOT EXISTS products (
             id TEXT PRIMARY KEY,
-            payload TEXT NOT NULL,
+            payload TEXT,
+            gumroad_id TEXT,
+            gumroad_payload TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Listings table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS listings (
+            id TEXT PRIMARY KEY,
+            product_id TEXT,
+            payload TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -37,4 +38,19 @@ def init_db():
     conn.commit()
     conn.close()
 
-    print("✅ SQLite DB initialized at:", DB_PATH)
+    logging.info(f"✅ SQLite DB initialized at: {DB_PATH}")
+
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    return conn
+
+
+def safe_json(value):
+    """
+    Ensures anything stored into SQLite is JSON string, not dict/list.
+    """
+    if isinstance(value, (dict, list)):
+        return json.dumps(value)
+    return value
+
