@@ -3,22 +3,42 @@ import requests
 from typing import Dict
 import re
 
+# =====================================================
+# Gumroad Configuration
+# =====================================================
+
 GUMROAD_API_KEY = os.getenv("GUMROAD_API_KEY")
 GUMROAD_API_URL = "https://api.gumroad.com/v2/products"
 
 
+# =====================================================
+# Helpers
+# =====================================================
+
 def slugify(text: str) -> str:
+    """
+    Convert product title into URL-safe slug.
+    """
     text = text.lower()
     text = re.sub(r"[^a-z0-9]+", "-", text)
     return text.strip("-")[:50]
 
 
+# =====================================================
+# Publisher
+# =====================================================
+
 def publish_to_gumroad(product: Dict) -> Dict:
+    """
+    Publishes a product to Gumroad and returns the Gumroad product object.
+    """
+
     if not GUMROAD_API_KEY:
-        raise RuntimeError("GUMROAD_API_KEY not configured")
+        raise RuntimeError("❌ GUMROAD_API_KEY not configured in environment")
 
     slug = slugify(product["title"])
 
+    # ✅ Payload (NO access_token here)
     payload = {
         "name": product["title"],
         "price": int(product["price"]) * 100,   # cents
@@ -27,37 +47,27 @@ def publish_to_gumroad(product: Dict) -> Dict:
         "published": True,
     }
 
+    # ✅ Authorization via Bearer token (important)
     headers = {
         "Accept": "application/json",
-        "Content-Type": "application/x-www-form-urlencoded",
         "User-Agent": "JRAVIS-BOT/1.0",
+        "Authorization": f"Bearer {GUMROAD_API_KEY}",
     }
 
-    # ✅ Put access_token in query params (important)
-    params = {
-        "access_token": GUMROAD_API_KEY
-    }
-
+    # 🌐 Call Gumroad API
     response = requests.post(
         GUMROAD_API_URL,
-        params=params,
-        data=payload,
         headers=headers,
+        data=payload,
         timeout=30,
-        allow_redirects=False,   # ✅ stop HTML redirect
     )
 
+    # 🔍 Debug logs (visible in Render logs)
     print("🌐 Gumroad status:", response.status_code)
     print("🌐 Gumroad headers:", dict(response.headers))
     print("🌐 Gumroad raw response:", response.text[:500])
 
-    # If Gumroad redirected, show it clearly
-    if response.status_code in (301, 302, 303, 307, 308):
-        raise RuntimeError(
-            f"Gumroad redirected request (status={response.status_code}, "
-            f"location={response.headers.get('Location')})"
-        )
-
+    # Parse JSON safely
     try:
         data = response.json()
     except Exception:
@@ -66,8 +76,10 @@ def publish_to_gumroad(product: Dict) -> Dict:
             f"(status={response.status_code}): {response.text[:300]}"
         )
 
+    # Gumroad API error handling
     if not data.get("success"):
         raise RuntimeError(f"Gumroad API error: {data}")
 
-    return data["product"]
+    # Return created product object
+    return data.get("product", {})
 
