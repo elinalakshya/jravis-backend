@@ -17,15 +17,28 @@ def publish_to_gumroad(product: Dict) -> Dict:
     payload = {
         "access_token": GUMROAD_API_KEY,
         "name": product["title"],
-        "price": int(product["price"]) * 100,   # Gumroad uses cents/paise
+        "price": int(product["price"]) * 100,
         "description": product.get("description", ""),
         "published": True
     }
 
     response = requests.post(GUMROAD_API_URL, data=payload, timeout=30)
-    data = response.json()
+
+    # 🔍 DEBUG LOGGING
+    print("🌐 Gumroad status:", response.status_code)
+    print("🌐 Gumroad raw response:", response.text[:500])
+
+    # If Gumroad did not return JSON, raise clear error
+    try:
+        data = response.json()
+    except Exception:
+        raise RuntimeError(
+            f"Gumroad returned non-JSON response "
+            f"(status={response.status_code}): {response.text[:200]}"
+        )
 
     if not data.get("success"):
-        raise RuntimeError(f"Gumroad error: {data}")
+        raise RuntimeError(f"Gumroad API error: {data}")
 
     return data["product"]
+
