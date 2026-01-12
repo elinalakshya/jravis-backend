@@ -1,85 +1,50 @@
 import os
 import requests
-from typing import Dict
-import re
+import logging
+from db import get_db
 
-# =====================================================
-# Gumroad Configuration
-# =====================================================
-
-GUMROAD_API_KEY = os.getenv("GUMROAD_API_KEY")
 GUMROAD_API_URL = "https://api.gumroad.com/v2/products"
+GUMROAD_TOKEN = os.getenv("GUMROAD_API_TOKEN")
+
+if not GUMROAD_TOKEN:
+    logging.warning("⚠️ GUMROAD_API_TOKEN not set")
 
 
-# =====================================================
-# Helpers
-# =====================================================
+def publish_to_gumroad(product_id: str):
+    conn = get_db()
+    cur = conn.cursor()
 
-def slugify(text: str) -> str:
-    """
-    Convert product title into URL-safe slug.
-    """
-    text = text.lower()
-    text = re.sub(r"[^a-z0-9]+", "-", text)
-    return text.strip("-")[:50]
+    cur.execute("SELECT payload FROM products WHERE id=?", (product_id,))
+    row = cur.fetchone()
+    conn.close()
 
+    if not row:
+        raise Exception("Product not found in DB")
 
-# =====================================================
-# Publisher
-# =====================================================
+    product = eval(row[0]) if isinstance(row[0], str) else row[0]
 
-def publish_to_gumroad(product: Dict) -> Dict:
-    """
-    Publishes a product to Gumroad and returns the Gumroad product object.
-    """
+    headers = {
+        "Authorization": f"Bearer {GUMROAD_TOKEN}"
+    }
 
-    if not GUMROAD_API_KEY:
-        raise RuntimeError("❌ GUMROAD_API_KEY not configured in environment")
-
-    slug = slugify(product["title"])
-
-    # ✅ Payload (NO access_token here)
     payload = {
         "name": product["title"],
-        "price": int(product["price"]) * 100,   # cents
-        "description": product.get("description", ""),
-        "url": slug,
-        "published": True,
+        "price": int(product["price"] * 100),  # Gumroad expects cents
+        "description": product["description"],
+        "published": True
     }
 
-    # ✅ Authorization via Bearer token (important)
-    headers = {
-        "Accept": "application/json",
-        "User-Agent": "JRAVIS-BOT/1.0",
-        "Authorization": f"Bearer {GUMROAD_API_KEY}",
-    }
+    response = requests.post(GUMROAD_API_URL, headers=headers, data=payload)
 
-    # 🌐 Call Gumroad API
-    response = requests.post(
-        GUMROAD_API_URL,
-        headers=headers,
-        data=payload,
-        timeout=30,
-    )
-
-    # 🔍 Debug logs (visible in Render logs)
-    print("🌐 Gumroad status:", response.status_code)
-    print("🌐 Gumroad headers:", dict(response.headers))
-    print("🌐 Gumroad raw response:", response.text[:500])
-
-    # Parse JSON safely
-    try:
-        data = response.json()
-    except Exception:
-        raise RuntimeError(
-            f"Gumroad returned non-JSON response "
-            f"(status={response.status_code}): {response.text[:300]}"
+    if response.status_code != 200:
+        raise Exception(
+            f"Gumroad API error ({response.status_code}): {response.text}"
         )
 
-    # Gumroad API error handling
-    if not data.get("success"):
-        raise RuntimeError(f"Gumroad API error: {data}")
+    data = response.json()
 
-    # Return created product object
-    return data.get("product", {})
+    return {
+        "gumroad_product_id": data["product"]["id"],
+        "url": data["product"]["short_url"]
+    }
 
