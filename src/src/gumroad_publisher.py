@@ -14,38 +14,49 @@ def slugify(text: str) -> str:
 
 
 def publish_to_gumroad(product: Dict) -> Dict:
-    """
-    Publishes product to Gumroad and returns Gumroad product object.
-    """
-
     if not GUMROAD_API_KEY:
         raise RuntimeError("GUMROAD_API_KEY not configured")
 
     slug = slugify(product["title"])
 
     payload = {
-        "access_token": GUMROAD_API_KEY,
         "name": product["title"],
-        "price": int(product["price"]) * 100,   # paise → cents
+        "price": int(product["price"]) * 100,   # cents
         "description": product.get("description", ""),
-        "url": slug,                            # ✅ REQUIRED
-        "published": True
+        "url": slug,
+        "published": True,
     }
 
     headers = {
         "Accept": "application/json",
-        "User-Agent": "JRAVIS-BOT/1.0"
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "JRAVIS-BOT/1.0",
+    }
+
+    # ✅ Put access_token in query params (important)
+    params = {
+        "access_token": GUMROAD_API_KEY
     }
 
     response = requests.post(
         GUMROAD_API_URL,
+        params=params,
         data=payload,
         headers=headers,
-        timeout=30
+        timeout=30,
+        allow_redirects=False,   # ✅ stop HTML redirect
     )
 
     print("🌐 Gumroad status:", response.status_code)
+    print("🌐 Gumroad headers:", dict(response.headers))
     print("🌐 Gumroad raw response:", response.text[:500])
+
+    # If Gumroad redirected, show it clearly
+    if response.status_code in (301, 302, 303, 307, 308):
+        raise RuntimeError(
+            f"Gumroad redirected request (status={response.status_code}, "
+            f"location={response.headers.get('Location')})"
+        )
 
     try:
         data = response.json()
