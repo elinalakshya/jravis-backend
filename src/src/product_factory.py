@@ -1,9 +1,9 @@
 import uuid
 import random
-from typing import Dict, List
+from typing import Dict
 
 # ---------------------------------------
-# Product Idea Seeds (expand anytime)
+# Product Idea Seeds
 # ---------------------------------------
 
 PRODUCT_IDEAS = [
