@@ -1,3 +1,4 @@
+from product_factory import generate_product
 from fastapi import FastAPI, HTTPException
 from typing import Dict, Any
 import uuid
@@ -91,3 +92,55 @@ def generate_listing(product_id: str):
     except Exception as e:
         logging.exception("❌ Listing generation failed")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ---------------------------------------------------
+# Bulk Product Generator API
+# ---------------------------------------------------
+
+@app.post("/api/products/bulk_generate")
+def bulk_generate_products(count: int = 10):
+    """
+    Generate multiple products and store into SQLite.
+    """
+
+    if count < 1 or count > 100:
+        raise HTTPException(status_code=400, detail="count must be 1–100")
+
+    created = []
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        for _ in range(count):
+            product = generate_product()
+
+            product_id = str(uuid.uuid4())
+            product["product_id"] = product_id
+
+            cur.execute(
+                "INSERT INTO products (id, payload) VALUES (?, ?)",
+                (product_id, json.dumps(product))
+            )
+
+            created.append({
+                "product_id": product_id,
+                "title": product["title"],
+                "price": product["price"],
+                "sku": product["sku"],
+            })
+
+        conn.commit()
+        conn.close()
+
+    except Exception as e:
+        logging.exception("❌ Bulk generation failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    logging.info(f"🚀 Bulk generated {len(created)} products")
+
+    return {
+        "status": "success",
+        "count": len(created),
+        "products": created
+    }
