@@ -53,3 +53,4 @@ def generate_product() -> Dict:
         "tags": tags,
         "sku": sku,
     }
+
