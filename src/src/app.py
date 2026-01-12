@@ -185,3 +185,62 @@ def generate_image(product_id: str):
     except Exception as e:
         logging.exception("❌ Image generation failed")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------
+# Bulk Image Generator API
+# ---------------------------------------------------
+
+@app.post("/api/products/generate_images_all")
+def generate_images_all():
+    """
+    Generate images for all products that do not yet have image_path.
+    """
+
+    generated = []
+    skipped = []
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        cur.execute("SELECT id, payload FROM products")
+        rows = cur.fetchall()
+
+        for row in rows:
+            product_id = row["id"]
+            product = json.loads(row["payload"])
+
+            # Skip if already has image
+            if product.get("image_path"):
+                skipped.append(product_id)
+                continue
+
+            image_path = generate_product_image(product)
+            product["image_path"] = image_path
+
+            cur.execute(
+                "UPDATE products SET payload = ? WHERE id = ?",
+                (json.dumps(product), product_id)
+            )
+
+            generated.append({
+                "product_id": product_id,
+                "image_path": image_path
+            })
+
+        conn.commit()
+        conn.close()
+
+    except Exception as e:
+        logging.exception("❌ Bulk image generation failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    logging.info(f"🖼️ Bulk images generated: {len(generated)}, skipped: {len(skipped)}")
+
+    return {
+        "status": "success",
+        "generated": len(generated),
+        "skipped": len(skipped),
+        "images": generated
+    }
