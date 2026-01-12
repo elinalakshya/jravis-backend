@@ -1,72 +1,93 @@
-from product_builder import build_product_from_draft
-from fastapi import FastAPI, Query
-import os
+from fastapi import FastAPI, HTTPException
+from typing import Dict, Any
+import uuid
+import json
+import logging
+
+from db import init_db, get_db
 from listing_engine import generate_listing_from_product
-from draft_engine import (
-    generate_and_save_template_draft,
-    generate_batch_templates
-)
 
-app = FastAPI(title="JRAVIS Backend", version="2.0")
+# ---------------------------------------------------
+# App Initialization
+# ---------------------------------------------------
 
-# ---------------------------
-# Health
-# ---------------------------
+logging.basicConfig(level=logging.INFO)
 
-@app.get("/")
-def root():
-    return {"status": "ok", "service": "jravis"}
+app = FastAPI(title="JRAVIS Backend API")
+
+# Initialize SQLite DB on startup
+init_db()
+
+
+# ---------------------------------------------------
+# Health Check
+# ---------------------------------------------------
 
 @app.get("/healthz")
 def healthz():
-    return {"status": "healthy"}
+    return {"status": "ok"}
 
 
-# ---------------------------
-# Draft APIs
-# ---------------------------
-
-@app.post("/api/drafts/templates/generate")
-def generate_single():
-    draft, path = generate_and_save_template_draft()
-    return {
-        "status": "success",
-        "draft": draft,
-        "path": path
-    }
-
-
-@app.post("/api/drafts/templates/batch")
-def generate_batch(count: int = Query(5, ge=1, le=50)):
-    items = generate_batch_templates(count)
-    return {
-        "status": "success",
-        "generated": len(items),
-        "items": items
-    }
+# ---------------------------------------------------
+# Product Builder API
+# ---------------------------------------------------
 
 @app.post("/api/products/build")
 def build_product(draft_id: str):
-    try:
-        metadata = build_product_from_draft(draft_id)
-        return {
-            "status": "success",
-            "product": metadata
-        }
-    except Exception as e:
-        import traceback
-        print("🔥 PRODUCT BUILD ERROR 🔥")
-        traceback.print_exc()
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+    """
+    Temporary simplified builder.
+    Later this will read from drafts table.
+    """
 
+    # ⚠️ For now we mock product content until draft DB is wired
+    product = {
+        "title": "Study Digital Toolkit for Students",
+        "description": "A printable productivity toolkit for focused learners.",
+        "price": 199,
+        "tags": ["study", "productivity", "planner", "printable"],
+        "sku": f"JRAVIS-{uuid.uuid4().hex[:8].upper()}",
+    }
+
+    product_id = str(uuid.uuid4())
+    product["product_id"] = product_id
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        cur.execute(
+            "INSERT INTO products (id, payload) VALUES (?, ?)",
+            (product_id, json.dumps(product))
+        )
+
+        conn.commit()
+        conn.close()
+
+    except Exception as e:
+        logging.exception("❌ Failed to save product")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    logging.info(f"✅ Product created in DB: {product_id}")
+
+    return {
+        "status": "success",
+        "product": product
+    }
+
+
+# ---------------------------------------------------
+# Listing Generator API
+# ---------------------------------------------------
 
 @app.post("/api/listings/generate")
 def generate_listing(product_id: str):
-    listing = generate_listing_from_product(product_id)
-    return {
-        "status": "success",
-        "listing": listing
-    }
+    try:
+        listing = generate_listing_from_product(product_id)
+        return {
+            "status": "success",
+            "listing": listing
+        }
+
+    except Exception as e:
+        logging.exception("❌ Listing generation failed")
+        raise HTTPException(status_code=500, detail=str(e))
