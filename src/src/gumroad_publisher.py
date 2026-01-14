@@ -10,10 +10,6 @@ logging.basicConfig(level=logging.INFO)
 
 
 def get_gumroad_token():
-    """
-    Get Gumroad access token from ENV.
-    Token usually starts with 'k...'
-    """
     token = os.getenv("GUMROAD_ACCESS_TOKEN")
     if not token:
         raise Exception("❌ Gumroad not connected. Please run OAuth first.")
@@ -21,9 +17,6 @@ def get_gumroad_token():
 
 
 def publish_product_to_gumroad(product_id: str):
-    """
-    Publish a product stored in SQLite to Gumroad
-    """
 
     # --------------------------------------------------
     # Fetch product from DB
@@ -33,14 +26,15 @@ def publish_product_to_gumroad(product_id: str):
 
     cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
     row = cur.fetchone()
+
     conn.close()
 
     if not row:
         raise Exception("❌ Product not found in DB")
 
-    # payload is stored as JSON STRING
+    # row is tuple → payload at index 0
     try:
-        product = json.loads(row["payload"])
+        product = json.loads(row[0])
     except Exception as e:
         raise Exception(f"❌ Invalid product JSON in DB: {e}")
 
@@ -51,7 +45,6 @@ def publish_product_to_gumroad(product_id: str):
     if not title:
         raise Exception("❌ Product title missing")
 
-    # Gumroad expects price in cents
     price_cents = int(price)
 
     # --------------------------------------------------
@@ -74,9 +67,6 @@ def publish_product_to_gumroad(product_id: str):
     logging.info("🚀 Publishing product to Gumroad...")
     res = requests.post(url, data=data, headers=headers)
 
-    # --------------------------------------------------
-    # Handle response
-    # --------------------------------------------------
     try:
         result = res.json()
     except Exception:
@@ -87,14 +77,9 @@ def publish_product_to_gumroad(product_id: str):
 
     product_info = result.get("product", {})
 
-    gumroad_id = product_info.get("id")
-    short_url = product_info.get("short_url")
-
-    logging.info(f"✅ Published to Gumroad: {short_url}")
-
     return {
-        "gumroad_product_id": gumroad_id,
-        "url": short_url,
+        "gumroad_product_id": product_info.get("id"),
+        "url": product_info.get("short_url"),
         "title": title,
         "price": price
     }
