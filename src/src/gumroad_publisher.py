@@ -1,71 +1,101 @@
 import os
-import time
+import json
 import requests
 import logging
 from db import get_db
 
 GUMROAD_API_BASE = "https://api.gumroad.com/v2"
 
+logging.basicConfig(level=logging.INFO)
 
-def get_access_token():
+
+def get_gumroad_token():
+    """
+    Get Gumroad access token from ENV.
+    Token usually starts with 'k...'
+    """
+    token = os.getenv("GUMROAD_ACCESS_TOKEN")
+    if not token:
+        raise Exception("❌ Gumroad not connected. Please run OAuth first.")
+    return token
+
+
+def publish_product_to_gumroad(product_id: str):
+    """
+    Publish a product stored in SQLite to Gumroad
+    """
+
+    # --------------------------------------------------
+    # Fetch product from DB
+    # --------------------------------------------------
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT access_token FROM gumroad_tokens ORDER BY id DESC LIMIT 1")
+
+    cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
     row = cur.fetchone()
     conn.close()
 
     if not row:
-        raise Exception("❌ Gumroad not connected. Please run OAuth first.")
+        raise Exception("❌ Product not found in DB")
 
-    return row[0]
+    # payload is stored as JSON STRING
+    try:
+        product = json.loads(row["payload"])
+    except Exception as e:
+        raise Exception(f"❌ Invalid product JSON in DB: {e}")
 
+    title = product.get("title")
+    description = product.get("description", "")
+    price = product.get("price", 199)
 
-def save_token(access_token, refresh_token=None, expires_in=None):
-    expires_at = None
-    if expires_in:
-        expires_at = int(time.time()) + int(expires_in)
+    if not title:
+        raise Exception("❌ Product title missing")
 
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO gumroad_tokens (access_token, refresh_token, expires_at) VALUES (?, ?, ?)",
-        (access_token, refresh_token, expires_at),
-    )
-    conn.commit()
-    conn.close()
-    logging.info("✅ Gumroad token saved")
+    # Gumroad expects price in cents
+    price_cents = int(price)
 
+    # --------------------------------------------------
+    # Send to Gumroad API
+    # --------------------------------------------------
+    token = get_gumroad_token()
 
-def publish_product_to_gumroad(product):
-    token = get_access_token()
+    url = f"{GUMROAD_API_BASE}/products"
 
-    payload = {
-        "name": product["title"],
-        "price": int(product["price"]) * 100,  # cents
-        "description": product["description"],
-        "custom_permalink": product["sku"].lower(),
+    data = {
+        "name": title,
+        "price": price_cents,
+        "description": description,
     }
 
     headers = {
         "Authorization": f"Bearer {token}"
     }
 
-    r = requests.post(
-        f"{GUMROAD_API_BASE}/products",
-        data=payload,
-        headers=headers,
-        timeout=30
-    )
+    logging.info("🚀 Publishing product to Gumroad...")
+    res = requests.post(url, data=data, headers=headers)
 
+    # --------------------------------------------------
+    # Handle response
+    # --------------------------------------------------
     try:
-        data = r.json()
+        result = res.json()
     except Exception:
-        raise Exception(
-            f"Gumroad returned non-JSON response (status={r.status_code}): {r.text[:200]}"
-        )
+        raise Exception(f"❌ Gumroad returned non-JSON response (status={res.status_code}): {res.text}")
 
-    if not data.get("success"):
-        raise Exception(f"Gumroad API error: {data}")
+    if not result.get("success"):
+        raise Exception(f"❌ Gumroad API error: {result}")
 
-    return data["product"]
+    product_info = result.get("product", {})
+
+    gumroad_id = product_info.get("id")
+    short_url = product_info.get("short_url")
+
+    logging.info(f"✅ Published to Gumroad: {short_url}")
+
+    return {
+        "gumroad_product_id": gumroad_id,
+        "url": short_url,
+        "title": title,
+        "price": price
+    }
 
