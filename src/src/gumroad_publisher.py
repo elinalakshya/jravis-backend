@@ -1,44 +1,69 @@
-# src/src/gumroad_publisher.py
-
+import os
+import time
 import requests
 import logging
 from db import get_db
-from gumroad_oauth import get_access_token
 
-GUMROAD_PRODUCTS_API = "https://api.gumroad.com/v2/products"
+GUMROAD_API_BASE = "https://api.gumroad.com/v2"
 
 
-def publish_product_to_gumroad(product_id: str):
-
-    token = get_access_token()
-    if not token:
-        raise Exception("Gumroad not authenticated. Run OAuth first.")
-
+def get_access_token():
     conn = get_db()
     cur = conn.cursor()
-
-    cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
+    cur.execute("SELECT access_token FROM gumroad_tokens ORDER BY id DESC LIMIT 1")
     row = cur.fetchone()
     conn.close()
 
     if not row:
-        raise Exception("Product not found in DB")
+        raise Exception("❌ Gumroad not connected. Please run OAuth first.")
 
-    product = eval(row[0]) if isinstance(row[0], str) else row[0]
+    return row[0]
+
+
+def save_token(access_token, refresh_token=None, expires_in=None):
+    expires_at = None
+    if expires_in:
+        expires_at = int(time.time()) + int(expires_in)
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO gumroad_tokens (access_token, refresh_token, expires_at) VALUES (?, ?, ?)",
+        (access_token, refresh_token, expires_at),
+    )
+    conn.commit()
+    conn.close()
+    logging.info("✅ Gumroad token saved")
+
+
+def publish_to_gumroad(product):
+    token = get_access_token()
+
+    payload = {
+        "name": product["title"],
+        "price": int(product["price"]) * 100,  # Gumroad uses cents
+        "description": product["description"],
+        "custom_permalink": product["sku"].lower(),
+    }
 
     headers = {
         "Authorization": f"Bearer {token}"
     }
 
-    data = {
-        "name": product["title"],
-        "price": product["price"],
-        "description": product["description"],
-    }
+    r = requests.post(
+        f"{GUMROAD_API_BASE}/products",
+        data=payload,
+        headers=headers,
+        timeout=30
+    )
 
-    r = requests.post(GUMROAD_PRODUCTS_API, headers=headers, data=data, timeout=60)
+    try:
+        data = r.json()
+    except Exception:
+        raise Exception(f"Gumroad returned non-JSON response (status={r.status_code}): {r.text[:200]}")
 
-    if r.status_code != 200:
-        raise Exception(f"Gumroad API error: {r.status_code} {r.text}")
+    if not data.get("success"):
+        raise Exception(f"Gumroad API error: {data}")
 
-    return r.json()
+    return data["product"]
+
