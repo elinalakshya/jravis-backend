@@ -2,87 +2,69 @@ import os
 import json
 import requests
 import logging
-
 from db import get_db
 
-GUMROAD_API_BASE = "https://api.gumroad.com/v2"
-GUMROAD_TOKEN = os.getenv("GUMROAD_API_KEY")  # must start with k...
+GUMROAD_API = "https://api.gumroad.com/v2/products"
+
+
+def get_gumroad_token():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT access_token FROM gumroad_tokens ORDER BY id DESC LIMIT 1")
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return row[0]
 
 
 def publish_product_to_gumroad(product_id: str):
-    if not GUMROAD_TOKEN:
-        raise Exception("GUMROAD_API_KEY not set in environment")
+    token = get_gumroad_token()
+    if not token:
+        raise Exception("❌ Gumroad not connected. Please run OAuth first.")
 
     conn = get_db()
     cur = conn.cursor()
-
     cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
     row = cur.fetchone()
+    conn.close()
 
     if not row:
-        raise Exception("Product not found in DB")
+        raise Exception("❌ Product not found in DB")
 
     try:
         product = json.loads(row[0])
     except Exception as e:
-        raise Exception(f"Invalid product JSON in DB: {str(e)}")
+        raise Exception(f"❌ Invalid product JSON in DB: {e}")
 
-    title = product.get("title", "Digital Product")
+    title = product.get("title", "JRAVIS Digital Product")
     description = product.get("description", "")
-    price = int(product.get("price", 99))
-
-    payload = {
-        "name": title,
-        "price": price,
-        "description": description,
-        "published": True,
-    }
+    price = int(product.get("price", 199))
 
     headers = {
-        "Authorization": f"Bearer {GUMROAD_TOKEN}",
+        "Authorization": f"Bearer {token}"
     }
 
-    logging.info("🚀 Sending product to Gumroad")
+    data = {
+        "name": title,
+        "price": price * 100,   # Gumroad uses cents
+        "description": description,
+        "published": True
+    }
 
-    resp = requests.post(
-        f"{GUMROAD_API_BASE}/products",
-        headers=headers,
-        data=payload,
-        timeout=30,
-    )
+    r = requests.post(GUMROAD_API, headers=headers, data=data)
 
-    if resp.status_code != 200:
-        raise Exception(
-            f"Gumroad API error: {resp.status_code} {resp.text}"
-        )
-
-    data = resp.json()
-
-    if not data.get("success"):
-        raise Exception(f"Gumroad rejected: {data}")
-
-    gumroad_product = data["product"]
-
-    # Save Gumroad product id
     try:
-        cur.execute(
-            "ALTER TABLE products ADD COLUMN gumroad_id TEXT"
-        )
-    except:
-        pass
+        resp = r.json()
+    except Exception:
+        raise Exception(f"Gumroad API error {r.status_code}: {r.text}")
 
-    cur.execute(
-        "UPDATE products SET gumroad_id = ? WHERE id = ?",
-        (gumroad_product["id"], product_id),
-    )
-
-    conn.commit()
-    conn.close()
-
-    logging.info("✅ Published on Gumroad")
+    if not resp.get("success"):
+        raise Exception(f"Gumroad API error: {resp}")
 
     return {
-        "gumroad_product_id": gumroad_product["id"],
-        "url": gumroad_product["short_url"],
+        "status": "success",
+        "gumroad_product_id": resp["product"]["id"],
+        "url": resp["product"]["short_url"]
     }
 
