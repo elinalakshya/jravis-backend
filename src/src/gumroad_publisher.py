@@ -36,12 +36,12 @@ def save_token(access_token, refresh_token=None, expires_in=None):
     logging.info("✅ Gumroad token saved")
 
 
-def publish_to_gumroad(product):
+def publish_product_to_gumroad(product):
     token = get_access_token()
 
     payload = {
         "name": product["title"],
-        "price": int(product["price"]) * 100,  # Gumroad uses cents
+        "price": int(product["price"]) * 100,  # cents
         "description": product["description"],
         "custom_permalink": product["sku"].lower(),
     }
@@ -60,7 +60,9 @@ def publish_to_gumroad(product):
     try:
         data = r.json()
     except Exception:
-        raise Exception(f"Gumroad returned non-JSON response (status={r.status_code}): {r.text[:200]}")
+        raise Exception(
+            f"Gumroad returned non-JSON response (status={r.status_code}): {r.text[:200]}"
+        )
 
     if not data.get("success"):
         raise Exception(f"Gumroad API error: {data}")
