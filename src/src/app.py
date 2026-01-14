@@ -1,8 +1,8 @@
 # src/src/app.py
 
-from gumroad_publisher import publish_product_to_gumroad
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
+from gumroad_publisher import publish_product_to_gumroad
 import uuid
 import json
 import logging
@@ -170,7 +170,6 @@ def gumroad_auth_callback(code: str):
 # ---------------------------------------------------
 # Gumroad Publisher
 # ---------------------------------------------------
-
 @app.post("/api/publish/gumroad")
 def publish_gumroad(product_id: str):
     try:
