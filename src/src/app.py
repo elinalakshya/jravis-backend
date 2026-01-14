@@ -154,16 +154,66 @@ def generate_images_all():
 # Gumroad OAuth
 # ---------------------------------------------------
 
-@app.get("/api/auth/gumroad/start")
-def gumroad_auth_start():
-    url = get_auth_url()
+# ---------------- GUMROAD OAUTH ----------------
+
+import os
+import requests
+from fastapi import Request
+from fastapi.responses import RedirectResponse
+from db import get_db
+
+GUMROAD_CLIENT_ID = os.getenv("GUMROAD_CLIENT_ID")
+GUMROAD_CLIENT_SECRET = os.getenv("GUMROAD_CLIENT_SECRET")
+GUMROAD_REDIRECT_URI = os.getenv("GUMROAD_REDIRECT_URI")
+
+
+@app.get("/api/auth/gumroad/login")
+def gumroad_login():
+    if not GUMROAD_CLIENT_ID or not GUMROAD_REDIRECT_URI:
+        return {"error": "Missing Gumroad OAuth env vars"}
+
+    url = (
+        "https://gumroad.com/oauth/authorize"
+        f"?client_id={GUMROAD_CLIENT_ID}"
+        f"&redirect_uri={GUMROAD_REDIRECT_URI}"
+        f"&response_type=code"
+        f"&scope=edit_products"
+    )
     return RedirectResponse(url)
 
 
 @app.get("/api/auth/gumroad/callback")
-def gumroad_auth_callback(code: str):
-    token_data = exchange_code_for_token(code)
-    save_tokens(token_data)
+def gumroad_callback(code: str):
+    if not code:
+        return {"error": "Missing code"}
+
+    token_url = "https://api.gumroad.com/oauth/token"
+
+    data = {
+        "client_id": GUMROAD_CLIENT_ID,
+        "client_secret": GUMROAD_CLIENT_SECRET,
+        "code": code,
+        "grant_type": "authorization_code",
+        "redirect_uri": GUMROAD_REDIRECT_URI,
+    }
+
+    r = requests.post(token_url, data=data)
+    resp = r.json()
+
+    if "access_token" not in resp:
+        return {"error": "OAuth failed", "resp": resp}
+
+    access_token = resp["access_token"]
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM gumroad_tokens")
+    cur.execute(
+        "INSERT INTO gumroad_tokens (access_token) VALUES (?)",
+        (access_token,),
+    )
+    conn.commit()
+
     return {"status": "success", "message": "Gumroad connected successfully"}
 
 
