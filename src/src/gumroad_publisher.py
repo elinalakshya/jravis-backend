@@ -16,7 +16,7 @@ def publish_product_to_gumroad(product_id: str):
     conn = get_db()
     cur = conn.cursor()
 
-    # ✅ products table stores full JSON in payload column
+    # ✅ products table stores JSON in payload column
     cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
     row = cur.fetchone()
     conn.close()
@@ -26,26 +26,26 @@ def publish_product_to_gumroad(product_id: str):
 
     try:
         product = json.loads(row[0])
-    except Exception as e:
-        raise Exception(f"❌ Invalid product JSON in DB: {e}")
+    except Exception:
+        raise Exception("❌ Invalid product JSON in DB")
 
     title = product.get("title")
-    price = int(product.get("price", 199))
+    price = product.get("price", 199)
 
     if not title:
-        raise Exception("❌ Product title missing in JSON")
+        raise Exception("❌ Product title missing in payload")
 
     payload = {
         "name": title,
-        "price": price,
-        "published": False  # ✅ draft only
+        "price": int(price),
+        "published": False  # ✅ draft product
     }
 
     headers = {
         "Authorization": f"Bearer {token}"
     }
 
-    logging.info("🚀 Creating Gumroad draft product: %s", title)
+    logging.info("🚀 Creating Gumroad draft product")
 
     r = requests.post(GUMROAD_API, data=payload, headers=headers)
 
@@ -64,3 +64,4 @@ def publish_product_to_gumroad(product_id: str):
         "message": "✅ Product created as DRAFT on Gumroad",
         "gumroad_url": product_url
     }
+
