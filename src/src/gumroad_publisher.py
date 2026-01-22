@@ -16,20 +16,18 @@ def publish_product_to_gumroad(product_id: str):
     conn = get_db()
     cur = conn.cursor()
 
-    # products table stores JSON payload
-    cur.execute("SELECT payload FROM products WHERE product_id = ?", (product_id,))
+    # ✅ FIXED: correct column name is 'id'
+    cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
     row = cur.fetchone()
     conn.close()
-
-    logging.info(f"DEBUG DB ROW: {row}")
 
     if not row:
         raise Exception("❌ Product not found in DB")
 
     try:
         product = json.loads(row[0])
-    except Exception as e:
-        raise Exception(f"❌ Invalid product JSON in DB: {e}")
+    except Exception:
+        raise Exception("❌ Invalid product JSON in DB")
 
     title = product.get("title")
     price = product.get("price", 199)
@@ -40,14 +38,14 @@ def publish_product_to_gumroad(product_id: str):
     payload = {
         "name": title,
         "price": int(price),
-        "published": False  # ✅ create as DRAFT
+        "published": False  # ✅ draft
     }
 
     headers = {
         "Authorization": f"Bearer {token}"
     }
 
-    logging.info("🚀 Creating Gumroad DRAFT product")
+    logging.info("🚀 Creating Gumroad draft product")
 
     r = requests.post(GUMROAD_API, data=payload, headers=headers)
 
