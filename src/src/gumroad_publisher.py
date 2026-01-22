@@ -17,8 +17,11 @@ def publish_product_to_gumroad(product_id: str):
     cur = conn.cursor()
 
     # ✅ products table stores JSON in payload column
-    cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
-    row = cur.fetchone()
+    cur.execute("""
+SELECT payload FROM products
+WHERE json_extract(payload, '$.product_id') = ?
+""", (product_id,))
+row = cur.fetchone()
     print("DEBUG DB ROW:", row)
     conn.close()
 
