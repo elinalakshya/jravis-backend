@@ -19,6 +19,7 @@ def publish_product_to_gumroad(product_id: str):
     # ✅ products table stores JSON in payload column
     cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
     row = cur.fetchone()
+    print("DEBUG DB ROW:", row)
     conn.close()
 
     if not row:
@@ -48,7 +49,8 @@ def publish_product_to_gumroad(product_id: str):
     logging.info("🚀 Creating Gumroad draft product")
 
     r = requests.post(GUMROAD_API, data=payload, headers=headers)
-
+    print("DEBUG GUMROAD STATUS:", r.status_code)
+    print("DEBUG GUMROAD TEXT:", r.text)
     if r.status_code != 200:
         raise Exception(f"❌ Gumroad API error {r.status_code}: {r.text}")
 
