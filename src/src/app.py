@@ -222,6 +222,7 @@ def gumroad_callback(code: str):
 # ---------------------------------------------------
 @app.post("/api/publish/gumroad")
 def publish_gumroad(product_id: str):
+    return publish_product_to_gumroad(product_id)
     try:
         result = publish_product_to_gumroad(product_id)
         return {"status": "success", **result}
