@@ -6,6 +6,7 @@ from db import get_db
 
 GUMROAD_API = "https://api.gumroad.com/v2/products"
 
+
 def publish_product_to_gumroad(product_id: str):
     token = os.getenv("GUMROAD_ACCESS_TOKEN")
 
@@ -15,8 +16,11 @@ def publish_product_to_gumroad(product_id: str):
     conn = get_db()
     cur = conn.cursor()
 
-    # ✅ correct query
-    cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
+    # ✅ FIX: correct columns (your DB uses product_id + product_json)
+    cur.execute(
+        "SELECT product_json FROM products WHERE product_id = ?",
+        (product_id,)
+    )
     row = cur.fetchone()
     conn.close()
 
@@ -25,41 +29,51 @@ def publish_product_to_gumroad(product_id: str):
 
     try:
         product = json.loads(row[0])
-    except Exception:
-        raise Exception("❌ Invalid product JSON in DB")
+    except Exception as e:
+        raise Exception(f"❌ Invalid product JSON in DB: {e}")
 
     title = product.get("title")
     price = product.get("price", 199)
+    description = product.get("description", "Printable productivity toolkit by JRAVIS")
 
     if not title:
-        raise Exception("❌ Product title missing")
+        raise Exception("❌ Product title missing in JSON")
+
+    # Gumroad expects price in cents
+    price_cents = int(price)
 
     payload = {
         "name": title,
-        "price": int(price),
-        "published": False  # ✅ DRAFT
+        "price": price_cents,
+        "description": description,
+        "published": False  # ✅ DRAFT MODE
     }
 
     headers = {
         "Authorization": f"Bearer {token}"
     }
 
-    logging.info("🚀 Creating Gumroad draft product")
+    logging.info("🚀 Creating Gumroad draft product: %s", title)
 
-    r = requests.post(GUMROAD_API, data=payload, headers=headers)
+    r = requests.post(GUMROAD_API, data=payload, headers=headers, timeout=30)
 
     if r.status_code != 200:
         raise Exception(f"❌ Gumroad API error {r.status_code}: {r.text}")
 
-    data = r.json()
+    try:
+        data = r.json()
+    except Exception:
+        raise Exception(f"❌ Gumroad returned non-JSON: {r.text}")
 
     if not data.get("success"):
         raise Exception(f"❌ Gumroad rejected: {data}")
 
     product_url = data["product"]["short_url"]
+    gumroad_id = data["product"]["id"]
 
     return {
         "status": "success",
         "message": "✅ Product created as DRAFT on Gumroad",
+        "gumroad_id": gumroad_id,
         "gumroad_url": product_url
     }
