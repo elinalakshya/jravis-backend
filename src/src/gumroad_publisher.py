@@ -1,62 +1,98 @@
 import os
+import json
 import requests
+import logging
 from db import get_db
 
 GUMROAD_API = "https://api.gumroad.com/v2/products"
-TOKEN = os.getenv("GUMROAD_ACCESS_TOKEN")
+
+logger = logging.getLogger(__name__)
+
+
+def get_access_token():
+    # Prefer ENV token (simpler, stable)
+    token = os.getenv("GUMROAD_ACCESS_TOKEN")
+    if token:
+        return token
+
+    # Fallback: token from DB (OAuth flow)
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT access_token FROM gumroad_tokens ORDER BY id DESC LIMIT 1")
+    row = cur.fetchone()
+    conn.close()
+
+    if row:
+        return row[0]
+
+    return None
 
 
 def publish_product_to_gumroad(product_id: str):
-    if not TOKEN:
-        return {"error": "GUMROAD_ACCESS_TOKEN not set in env"}
+    token = get_access_token()
+    if not token:
+        return {"detail": "❌ Gumroad not connected. Please run OAuth first."}
 
-    db = get_db()
-    cur = db.cursor()
-
-    cur.execute("SELECT title, price FROM products WHERE product_id = ?", (product_id,))
+    # ---- Fetch product payload ----
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
     row = cur.fetchone()
+    conn.close()
 
     if not row:
-        return {"error": "Product not found in DB"}
+        return {"detail": "❌ Product not found in DB"}
 
-    title, price = row
+    try:
+        product = json.loads(row[0])
+    except Exception as e:
+        return {"detail": f"❌ Invalid product JSON: {str(e)}"}
 
-    data = {
+    title = product.get("title")
+    price = product.get("price", 99)
+    description = product.get("description", "")
+    tags = ",".join(product.get("tags", []))
+
+    if not title:
+        return {"detail": "❌ Product title missing"}
+
+    # Gumroad price is in cents
+    price_cents = int(price) * 100
+
+    payload = {
         "name": title,
-        "price": int(price) * 100,   # Gumroad uses cents
-        "published": "false"         # keep as DRAFT
+        "price": price_cents,
+        "description": description,
+        "tags": tags,
+        "published": False,  # DRAFT MODE
     }
 
     headers = {
-        "Authorization": f"Bearer {TOKEN}"
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/x-www-form-urlencoded",
     }
 
     try:
-        res = requests.post(GUMROAD_API, data=data, headers=headers, timeout=30)
+        resp = requests.post(GUMROAD_API, data=payload, headers=headers, timeout=30)
     except Exception as e:
-        return {"error": str(e)}
+        logger.exception("Gumroad request failed")
+        return {"detail": f"❌ Gumroad request failed: {str(e)}"}
 
-    if res.status_code != 200:
+    if resp.status_code != 200:
         return {
-            "error": "Gumroad API failed",
-            "status": res.status_code,
-            "body": res.text
+            "detail": f"❌ Gumroad API error {resp.status_code}: {resp.text}"
         }
 
-    out = res.json()
+    data = resp.json()
 
-    if not out.get("success"):
-        return {"error": "Gumroad rejected request", "body": out}
+    if not data.get("success"):
+        return {"detail": f"❌ Gumroad rejected: {data}"}
 
-    gumroad_id = out["product"]["id"]
-
-    cur.execute(
-        "UPDATE products SET gumroad_id = ? WHERE product_id = ?",
-        (gumroad_id, product_id)
-    )
-    db.commit()
+    product_url = data["product"]["short_url"]
 
     return {
-        "status": "draft_created",
-        "gumroad_id": gumroad_id
+        "status": "success",
+        "message": "✅ Product created as DRAFT on Gumroad",
+        "gumroad_url": product_url,
     }
+
