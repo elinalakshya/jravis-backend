@@ -4,7 +4,7 @@ import requests
 import logging
 from db import get_db
 
-GUMROAD_API = "https://api.gumroad.com/v2/products"
+GUMROAD_CREATE_URL = "https://api.gumroad.com/v2/products"
 
 
 def publish_product_to_gumroad(product_id: str):
@@ -16,7 +16,7 @@ def publish_product_to_gumroad(product_id: str):
     conn = get_db()
     cur = conn.cursor()
 
-    # ✅ FIXED: correct column name is 'id'
+    # products table uses id, not product_id column
     cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
     row = cur.fetchone()
     conn.close()
@@ -35,19 +35,23 @@ def publish_product_to_gumroad(product_id: str):
     if not title:
         raise Exception("❌ Product title missing")
 
+    # Gumroad expects price in CENTS
+    price_cents = int(float(price) * 100)
+
     payload = {
         "name": title,
-        "price": int(price),
-        "published": False  # ✅ draft
+        "price": price_cents,
+        "published": False  # DRAFT
     }
 
     headers = {
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json"
     }
 
     logging.info("🚀 Creating Gumroad draft product")
 
-    r = requests.post(GUMROAD_API, data=payload, headers=headers)
+    r = requests.post(GUMROAD_CREATE_URL, data=payload, headers=headers)
 
     if r.status_code != 200:
         raise Exception(f"❌ Gumroad API error {r.status_code}: {r.text}")
@@ -64,4 +68,3 @@ def publish_product_to_gumroad(product_id: str):
         "message": "✅ Product created as DRAFT on Gumroad",
         "gumroad_url": product_url
     }
-
