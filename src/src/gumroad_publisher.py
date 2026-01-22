@@ -16,11 +16,8 @@ def publish_product_to_gumroad(product_id: str):
     conn = get_db()
     cur = conn.cursor()
 
-    # ✅ FIX: correct columns (your DB uses product_id + product_json)
-    cur.execute(
-        "SELECT product_json FROM products WHERE product_id = ?",
-        (product_id,)
-    )
+    # ✅ products table stores full JSON in payload column
+    cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
     row = cur.fetchone()
     conn.close()
 
@@ -33,20 +30,15 @@ def publish_product_to_gumroad(product_id: str):
         raise Exception(f"❌ Invalid product JSON in DB: {e}")
 
     title = product.get("title")
-    price = product.get("price", 199)
-    description = product.get("description", "Printable productivity toolkit by JRAVIS")
+    price = int(product.get("price", 199))
 
     if not title:
         raise Exception("❌ Product title missing in JSON")
 
-    # Gumroad expects price in cents
-    price_cents = int(price)
-
     payload = {
         "name": title,
-        "price": price_cents,
-        "description": description,
-        "published": False  # ✅ DRAFT MODE
+        "price": price,
+        "published": False  # ✅ draft only
     }
 
     headers = {
@@ -55,25 +47,20 @@ def publish_product_to_gumroad(product_id: str):
 
     logging.info("🚀 Creating Gumroad draft product: %s", title)
 
-    r = requests.post(GUMROAD_API, data=payload, headers=headers, timeout=30)
+    r = requests.post(GUMROAD_API, data=payload, headers=headers)
 
     if r.status_code != 200:
         raise Exception(f"❌ Gumroad API error {r.status_code}: {r.text}")
 
-    try:
-        data = r.json()
-    except Exception:
-        raise Exception(f"❌ Gumroad returned non-JSON: {r.text}")
+    data = r.json()
 
     if not data.get("success"):
         raise Exception(f"❌ Gumroad rejected: {data}")
 
     product_url = data["product"]["short_url"]
-    gumroad_id = data["product"]["id"]
 
     return {
         "status": "success",
         "message": "✅ Product created as DRAFT on Gumroad",
-        "gumroad_id": gumroad_id,
         "gumroad_url": product_url
     }
