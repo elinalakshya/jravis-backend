@@ -16,44 +16,41 @@ def publish_product_to_gumroad(product_id: str):
     conn = get_db()
     cur = conn.cursor()
 
-    # ✅ products table stores JSON in payload column
-    cur.execute("""
-SELECT payload FROM products
-WHERE json_extract(payload, '$.product_id') = ?
-""", (product_id,))
-row = cur.fetchone()
-    print("DEBUG DB ROW:", row)
+    # products table stores JSON payload
+    cur.execute("SELECT payload FROM products WHERE product_id = ?", (product_id,))
+    row = cur.fetchone()
     conn.close()
+
+    logging.info(f"DEBUG DB ROW: {row}")
 
     if not row:
         raise Exception("❌ Product not found in DB")
 
     try:
         product = json.loads(row[0])
-    except Exception:
-        raise Exception("❌ Invalid product JSON in DB")
+    except Exception as e:
+        raise Exception(f"❌ Invalid product JSON in DB: {e}")
 
     title = product.get("title")
     price = product.get("price", 199)
 
     if not title:
-        raise Exception("❌ Product title missing in payload")
+        raise Exception("❌ Product title missing")
 
     payload = {
         "name": title,
         "price": int(price),
-        "published": False  # ✅ draft product
+        "published": False  # ✅ create as DRAFT
     }
 
     headers = {
         "Authorization": f"Bearer {token}"
     }
 
-    logging.info("🚀 Creating Gumroad draft product")
+    logging.info("🚀 Creating Gumroad DRAFT product")
 
     r = requests.post(GUMROAD_API, data=payload, headers=headers)
-    print("DEBUG GUMROAD STATUS:", r.status_code)
-    print("DEBUG GUMROAD TEXT:", r.text)
+
     if r.status_code != 200:
         raise Exception(f"❌ Gumroad API error {r.status_code}: {r.text}")
 
