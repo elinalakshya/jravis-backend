@@ -1,12 +1,6 @@
-# --- FastAPI Stack (Stable Matching Versions) ---
-fastapi==0.111.0
-starlette==0.37.2
-uvicorn==0.30.3
-pydantic==2.8.2
-pydantic_core==2.20.1
-pydantic-settings==2.3.0
-requests==2.32.3
-openai==1.52.0
+fastapi
+uvicorn
+requests
+pydantic
 
-
-Pillow
+requests
