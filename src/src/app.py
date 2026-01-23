@@ -1,3 +1,8 @@
+@app.get("/")
+def root():
+    return {"status": "JRAVIS running"}
+
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import os
