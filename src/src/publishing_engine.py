@@ -1,11 +1,10 @@
-# jravis-backend/src/src/publishing_engine.py
+# src/src/publishing_engine.py
 
 import traceback
 
-from publisher_printify import publish_to_printify
+from gumroad_publisher import publish_to_gumroad
 from publisher_payhip import publish_to_payhip
 from publisher_meshy import publish_to_meshy
-from publisher_gumroad import publish_to_gumroad
 
 
 def run_publishers(title: str, description: str, zip_path: str):
@@ -14,7 +13,7 @@ def run_publishers(title: str, description: str, zip_path: str):
     results = {}
 
     # --------------------
-    # GUMROAD (DIGITAL)
+    # GUMROAD (PRIMARY)
     # --------------------
     try:
         print("🟠 Publishing to Gumroad...")
@@ -45,20 +44,7 @@ def run_publishers(title: str, description: str, zip_path: str):
         results["payhip"] = None
 
     # --------------------
-    # PRINTIFY
-    # --------------------
-    try:
-        print("🔵 Publishing to Printify...")
-        printify_result = publish_to_printify(title, description)
-        results["printify"] = printify_result
-        print("✅ Printify SUCCESS")
-    except Exception as e:
-        print("❌ Printify FAILED:", e)
-        traceback.print_exc()
-        results["printify"] = None
-
-    # --------------------
-    # MESHY / OTHERS
+    # MESHY (OPTIONAL)
     # --------------------
     try:
         print("🟢 Publishing to Meshy...")
