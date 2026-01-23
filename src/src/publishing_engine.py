@@ -1,5 +1,3 @@
-# src/src/publishing_engine.py
-
 import traceback
 
 from gumroad_publisher import publish_to_gumroad
@@ -44,7 +42,7 @@ def run_publishers(title: str, description: str, zip_path: str):
         results["payhip"] = None
 
     # --------------------
-    # MESHY (OPTIONAL)
+    # MESHY
     # --------------------
     try:
         print("🟢 Publishing to Meshy...")
@@ -58,3 +56,4 @@ def run_publishers(title: str, description: str, zip_path: str):
 
     print("🏁 ALL PUBLISHERS FINISHED")
     return results
+
