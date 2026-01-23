@@ -1,118 +1,87 @@
 import os
-import json
 import requests
-import logging
-from db import get_db
-
-GUMROAD_CREATE_URL = "https://api.gumroad.com/v2/products"
 
 
-def publish_product_to_gumroad(product_id: str):
-    token = os.getenv("GUMROAD_ACCESS_TOKEN")
+GUMROAD_API_BASE = "https://api.gumroad.com/v2"
 
-    if not token:
-        raise Exception("❌ Gumroad access token missing in env")
 
-    conn = get_db()
-    cur = conn.cursor()
+class GumroadPublisher:
 
-    # products table uses id, not product_id column
-    cur.execute("SELECT payload FROM products WHERE id = ?", (product_id,))
-    row = cur.fetchone()
-    conn.close()
+    def __init__(self):
+        self.token = os.getenv("GUMROAD_TOKEN")
+        if not self.token:
+            raise RuntimeError("GUMROAD_TOKEN not found in environment variables")
 
-    if not row:
-        raise Exception("❌ Product not found in DB")
+    # -----------------------------
+    # CREATE PRODUCT
+    # -----------------------------
+    def create_product(self, title: str, price_rs: float, description: str):
+        url = f"{GUMROAD_API_BASE}/products"
 
-    try:
-        product = json.loads(row[0])
-    except Exception:
-        raise Exception("❌ Invalid product JSON in DB")
+        data = {
+            "access_token": self.token,
+            "name": title,
+            "price": int(price_rs * 100),  # INR → paise
+            "description": description
+        }
 
-    title = product.get("title")
-    price = product.get("price", 199)
+        r = requests.post(url, data=data, timeout=60).json()
 
-    if not title:
-        raise Exception("❌ Product title missing")
+        if not r.get("success"):
+            raise Exception(f"Gumroad create failed: {r}")
 
-    # Gumroad expects price in CENTS
-    price_cents = int(float(price) * 100)
+        return {
+            "id": r["product"]["id"],
+            "url": r["product"]["short_url"]
+        }
 
-    payload = {
-        "name": title,
-        "price": price_cents,
-        "published": False  # DRAFT
-    }
+    # -----------------------------
+    # UPLOAD FILE
+    # -----------------------------
+    def upload_file(self, product_id: str, file_path: str):
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Product file not found: {file_path}")
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/json"
-    }
+        url = f"{GUMROAD_API_BASE}/products/{product_id}/files"
 
-    logging.info("🚀 Creating Gumroad draft product")
+        with open(file_path, "rb") as f:
+            files = {"file": f}
+            data = {"access_token": self.token}
+            r = requests.post(url, files=files, data=data, timeout=120).json()
 
-    r = requests.post(GUMROAD_CREATE_URL, data=payload, headers=headers)
+        if not r.get("success"):
+            raise Exception(f"Gumroad upload failed: {r}")
 
-    if r.status_code != 200:
-        raise Exception(f"❌ Gumroad API error {r.status_code}: {r.text}")
+        return True
 
-    data = r.json()
+    # -----------------------------
+    # PUBLISH PRODUCT
+    # -----------------------------
+    def publish_product(self, product_id: str):
+        url = f"{GUMROAD_API_BASE}/products/{product_id}"
 
-    if not data.get("success"):
-        raise Exception(f"❌ Gumroad rejected: {data}")
+        data = {
+            "access_token": self.token,
+            "published": True
+        }
 
-    product_url = data["product"]["short_url"]
+        r = requests.put(url, data=data, timeout=60).json()
 
-    return {
-        "status": "success",
-        "message": "✅ Product created as DRAFT on Gumroad",
-        "gumroad_url": product_url
-    }
+        if not r.get("success"):
+            raise Exception(f"Gumroad publish failed: {r}")
 
-from fastapi import APIRouter
-import os, requests
+        return True
 
-router = APIRouter()
+    # -----------------------------
+    # FULL PIPELINE
+    # -----------------------------
+    def publish_full(self, title: str, price_rs: float, description: str, file_path: str):
+        product = self.create_product(title, price_rs, description)
+        self.upload_file(product["id"], file_path)
+        self.publish_product(product["id"])
 
-@router.post("/gumroad/publish")
-def publish_to_gumroad(product: dict):
-    token = os.getenv("GUMROAD_TOKEN")
-
-    # 1. Create product
-    create_url = "https://api.gumroad.com/v2/products"
-    data = {
-        "access_token": token,
-        "name": product["title"],
-        "price": int(product["price"] * 100),
-        "description": product["description"]
-    }
-    r = requests.post(create_url, data=data).json()
-
-    if not r.get("success"):
-        return {"error": "create_failed", "details": r}
-
-    product_id = r["product"]["id"]
-
-    # 2. Upload file
-    upload_url = f"https://api.gumroad.com/v2/products/{product_id}/files"
-
-    with open(product["file_path"], "rb") as f:
-        files = {"file": f}
-        data = {"access_token": token}
-        u = requests.post(upload_url, files=files, data=data).json()
-
-    if not u.get("success"):
-        return {"error": "upload_failed", "details": u}
-
-    # 3. Publish product
-    pub_url = f"https://api.gumroad.com/v2/products/{product_id}"
-    p = requests.put(pub_url, data={
-        "access_token": token,
-        "published": True
-    }).json()
-
-    return {
-        "status": "published",
-        "product_id": product_id,
-        "url": r["product"]["short_url"]
-    }
+        return {
+            "status": "published",
+            "product_id": product["id"],
+            "url": product["url"]
+        }
