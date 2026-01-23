@@ -68,3 +68,51 @@ def publish_product_to_gumroad(product_id: str):
         "message": "✅ Product created as DRAFT on Gumroad",
         "gumroad_url": product_url
     }
+
+from fastapi import APIRouter
+import os, requests
+
+router = APIRouter()
+
+@router.post("/gumroad/publish")
+def publish_to_gumroad(product: dict):
+    token = os.getenv("GUMROAD_TOKEN")
+
+    # 1. Create product
+    create_url = "https://api.gumroad.com/v2/products"
+    data = {
+        "access_token": token,
+        "name": product["title"],
+        "price": int(product["price"] * 100),
+        "description": product["description"]
+    }
+    r = requests.post(create_url, data=data).json()
+
+    if not r.get("success"):
+        return {"error": "create_failed", "details": r}
+
+    product_id = r["product"]["id"]
+
+    # 2. Upload file
+    upload_url = f"https://api.gumroad.com/v2/products/{product_id}/files"
+
+    with open(product["file_path"], "rb") as f:
+        files = {"file": f}
+        data = {"access_token": token}
+        u = requests.post(upload_url, files=files, data=data).json()
+
+    if not u.get("success"):
+        return {"error": "upload_failed", "details": u}
+
+    # 3. Publish product
+    pub_url = f"https://api.gumroad.com/v2/products/{product_id}"
+    p = requests.put(pub_url, data={
+        "access_token": token,
+        "published": True
+    }).json()
+
+    return {
+        "status": "published",
+        "product_id": product_id,
+        "url": r["product"]["short_url"]
+    }
