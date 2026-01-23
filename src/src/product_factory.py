@@ -1,56 +1,42 @@
-import uuid
-import random
+import os
 from typing import Dict
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+import uuid
 
-# ---------------------------------------
-# Product Idea Seeds
-# ---------------------------------------
-
-PRODUCT_IDEAS = [
-    "Student Planner",
-    "Daily Habit Tracker",
-    "Fitness Progress Journal",
-    "Budget Planner",
-    "Goal Setting Workbook",
-    "Meal Planning Kit",
-    "Study Focus Toolkit",
-    "Self Discipline Challenge",
-    "Morning Routine Planner",
-    "Digital Detox Planner",
-]
-
-PRICE_RANGE = [99, 149, 199, 249, 299]
-
-TAGS = [
-    "planner", "printable", "productivity", "self improvement",
-    "digital download", "study", "fitness", "finance", "mindset"
-]
-
-# ---------------------------------------
-# Generator
-# ---------------------------------------
 
 def generate_product() -> Dict:
-    idea = random.choice(PRODUCT_IDEAS)
+    title = "Morning Routine Planner – Printable Productivity Toolkit"
+    description = "Morning Routine Planner designed to help users stay consistent, organized, and achieve measurable improvement. Clean printable format."
+    price = 149
 
-    title = f"{idea} – Printable Productivity Toolkit"
+    os.makedirs("factory_output", exist_ok=True)
 
-    description = (
-        f"{idea} designed to help users stay consistent, organized, "
-        f"and achieve measurable improvement. Clean printable format."
-    )
+    filename = f"planner_{uuid.uuid4().hex[:8]}.pdf"
+    file_path = os.path.join("factory_output", filename)
 
-    price = random.choice(PRICE_RANGE)
+    # ---- CREATE SIMPLE PDF ----
+    c = canvas.Canvas(file_path, pagesize=A4)
+    width, height = A4
 
-    sku = f"JRAVIS-{uuid.uuid4().hex[:8].upper()}"
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(50, height - 80, title)
 
-    tags = random.sample(TAGS, k=5)
+    c.setFont("Helvetica", 12)
+    text = c.beginText(50, height - 130)
+    for line in description.split("."):
+        text.textLine(line.strip())
+    c.drawText(text)
+
+    c.showPage()
+    c.save()
+
+    print("📄 PDF CREATED:", file_path)
 
     return {
-        "title": title,
-        "description": description,
+        "zip_path": file_path,      # still named zip_path for engine compatibility
+        "name": title,
         "price": price,
-        "tags": tags,
-        "sku": sku,
+        "description": description
     }
 
