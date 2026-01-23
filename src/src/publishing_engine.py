@@ -1,26 +1,74 @@
-import os
-from src.publishers.gumroad_publisher import publish_to_gumroad
-from src.publishers.payhip_publisher import publish_to_payhip
-from src.publishers.printify_publisher import publish_to_printify
+# jravis-backend/src/src/publishing_engine.py
+
+import traceback
+
+from publisher_printify import publish_to_printify
+from publisher_payhip import publish_to_payhip
+from publisher_meshy import publish_to_meshy
+from publisher_gumroad import publish_to_gumroad
+
 
 def run_publishers(title: str, description: str, zip_path: str):
-    results = []
+    print("💼 RUNNING ALL PUBLISHERS")
 
-    print("💰 Publishing Engine Triggered")
+    results = {}
 
-    if os.getenv("GUMROAD_API_KEY"):
-        print("➡️ Publishing to Gumroad")
-        results.append(publish_to_gumroad(title, description, zip_path))
+    # --------------------
+    # GUMROAD (DIGITAL)
+    # --------------------
+    try:
+        print("🟠 Publishing to Gumroad...")
+        gumroad_url = publish_to_gumroad(
+            title=title,
+            description=description,
+            price_rs=199,
+            file_path=zip_path,
+        )
+        results["gumroad"] = gumroad_url
+        print("✅ Gumroad SUCCESS:", gumroad_url)
+    except Exception as e:
+        print("❌ Gumroad FAILED:", e)
+        traceback.print_exc()
+        results["gumroad"] = None
 
-    if os.getenv("PAYHIP_API_KEY"):
-        print("➡️ Publishing to Payhip")
-        results.append(publish_to_payhip(title, description, zip_path))
+    # --------------------
+    # PAYHIP
+    # --------------------
+    try:
+        print("🟣 Publishing to Payhip...")
+        payhip_url = publish_to_payhip(title, description, zip_path)
+        results["payhip"] = payhip_url
+        print("✅ Payhip SUCCESS:", payhip_url)
+    except Exception as e:
+        print("❌ Payhip FAILED:", e)
+        traceback.print_exc()
+        results["payhip"] = None
 
-    if os.getenv("PRINTIFY_API_KEY"):
-        print("➡️ Publishing to Printify")
-        results.append(publish_to_printify(title, description, zip_path))
+    # --------------------
+    # PRINTIFY
+    # --------------------
+    try:
+        print("🔵 Publishing to Printify...")
+        printify_result = publish_to_printify(title, description)
+        results["printify"] = printify_result
+        print("✅ Printify SUCCESS")
+    except Exception as e:
+        print("❌ Printify FAILED:", e)
+        traceback.print_exc()
+        results["printify"] = None
 
-    if not results:
-        print("⚠️ No API keys found — publishing skipped")
+    # --------------------
+    # MESHY / OTHERS
+    # --------------------
+    try:
+        print("🟢 Publishing to Meshy...")
+        meshy_result = publish_to_meshy(title, description)
+        results["meshy"] = meshy_result
+        print("✅ Meshy SUCCESS")
+    except Exception as e:
+        print("❌ Meshy FAILED:", e)
+        traceback.print_exc()
+        results["meshy"] = None
 
+    print("🏁 ALL PUBLISHERS FINISHED")
     return results
