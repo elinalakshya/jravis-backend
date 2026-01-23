@@ -1,14 +1,13 @@
-@app.get("/")
-def root():
-    return {"status": "JRAVIS running"}
-
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import os
 import requests
 
-app = FastAPI(title="JRAVIS Backend")
+app = FastAPI()
+
+@app.get("/")
+def root():
+    return {"status": "JRAVIS running"}
 
 # -----------------------------
 # CONFIG
