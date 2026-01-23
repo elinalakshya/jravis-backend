@@ -13,18 +13,22 @@ def publish_to_gumroad(title, description, price_rs, file_path):
     if not GUMROAD_TOKEN:
         raise Exception("❌ GUMROAD_TOKEN not set in environment")
 
+    auth_headers = {
+        **HEADERS,
+        "Authorization": f"Bearer {GUMROAD_TOKEN}",
+    }
+
     print("🟠 Creating Gumroad product...")
 
-    create_url = "https://api.gumroad.com/v2/products.json"
+    create_url = "https://api.gumroad.com/v2/products"
 
     data = {
-        "access_token": GUMROAD_TOKEN,
         "name": title,
         "price": int(price_rs * 100),  # paise
         "description": description,
     }
 
-    r = requests.post(create_url, data=data, headers=HEADERS, timeout=60)
+    r = requests.post(create_url, data=data, headers=auth_headers, timeout=60)
 
     print("🟠 Gumroad create status:", r.status_code)
     print("🟠 Gumroad create response (first 300 chars):")
@@ -36,7 +40,7 @@ def publish_to_gumroad(title, description, price_rs, file_path):
     try:
         resp = r.json()
     except Exception:
-        raise Exception("❌ Gumroad did not return JSON — token or access issue")
+        raise Exception("❌ Gumroad did not return JSON — auth issue likely")
 
     if not resp.get("success"):
         raise Exception(f"❌ Gumroad create failed: {resp}")
@@ -46,14 +50,13 @@ def publish_to_gumroad(title, description, price_rs, file_path):
 
     print("📤 Uploading file to Gumroad...")
 
-    upload_url = f"https://api.gumroad.com/v2/products/{product_id}/files.json"
+    upload_url = f"https://api.gumroad.com/v2/products/{product_id}/files"
 
     with open(file_path, "rb") as f:
         upload = requests.post(
             upload_url,
-            data={"access_token": GUMROAD_TOKEN},
             files={"file": f},
-            headers=HEADERS,
+            headers=auth_headers,
             timeout=120,
         )
 
