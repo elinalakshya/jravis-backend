@@ -1,16 +1,15 @@
-from pydantic_settings import BaseSettings
+import os
 
+# ---- API KEYS ----
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+PRINTIFY_API_KEY = os.getenv("PRINTIFY_API_KEY", "")
+PAYHIP_API_KEY = os.getenv("PAYHIP_API_KEY", "")
+MESHY_API_KEY = os.getenv("MESHY_API_KEY", "")
+GUMROAD_TOKEN = os.getenv("GUMROAD_TOKEN", "")
 
-class Settings(BaseSettings):
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8"
-    }
+# ---- WARNINGS ----
+if not GUMROAD_TOKEN:
+    print("⚠️ WARNING: GUMROAD_TOKEN not set")
 
-    PROJECT_NAME: str = "JRAVIS BACKEND"
-    API_KEY: str = "JRV2040_LOCKED_KEY_001"
-    DEBUG: bool = False
-
-
-settings = Settings()
-
+if not OPENAI_API_KEY:
+    print("⚠️ WARNING: OPENAI_API_KEY not set")
