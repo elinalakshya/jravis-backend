@@ -1,225 +1,110 @@
-# src/src/app.py
-
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import RedirectResponse
-from gumroad_publisher import publish_product_to_gumroad
-import uuid
-import json
-import logging
-
-from db import init_db, get_db
-from product_factory import generate_product
-from listing_engine import generate_listing_from_product
-from image_engine import generate_image_for_product, generate_images_for_all_products
-
-from gumroad_oauth import get_auth_url, exchange_code_for_token, save_tokens
-from gumroad_publisher import publish_product_to_gumroad
-
-
-# ---------------------------------------------------
-# App Init
-# ---------------------------------------------------
-
-logging.basicConfig(level=logging.INFO)
-
-app = FastAPI(title="JRAVIS Backend API")
-
-init_db()
-
-# ---------------------------------------------------
-# Health
-# ---------------------------------------------------
-
-@app.get("/healthz")
-def healthz():
-    return {"status": "ok"}
-
-
-# ---------------------------------------------------
-# Product Builder
-# ---------------------------------------------------
-
-@app.post("/api/products/build")
-def build_product(draft_id: str):
-    product = {
-        "title": "Study Digital Toolkit for Students",
-        "description": "A printable productivity toolkit for focused learners.",
-        "price": 199,
-        "tags": ["study", "productivity", "planner", "printable"],
-        "sku": f"JRAVIS-{uuid.uuid4().hex[:8].upper()}",
-    }
-
-    product_id = str(uuid.uuid4())
-    product["product_id"] = product_id
-
-    try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO products (id, payload) VALUES (?, ?)",
-            (product_id, json.dumps(product))
-        )
-        conn.commit()
-        conn.close()
-
-    except Exception as e:
-        logging.exception("❌ Failed to save product")
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return {"status": "success", "product": product}
-
-
-# ---------------------------------------------------
-# Bulk Product Generator
-# ---------------------------------------------------
-
-@app.post("/api/products/bulk_generate")
-def bulk_generate_products(count: int = 10):
-
-    if count < 1 or count > 100:
-        raise HTTPException(status_code=400, detail="count must be 1–100")
-
-    created = []
-
-    try:
-        conn = get_db()
-        cur = conn.cursor()
-
-        for _ in range(count):
-            product = generate_product()
-            product_id = str(uuid.uuid4())
-            product["product_id"] = product_id
-
-            cur.execute(
-                "INSERT INTO products (id, payload) VALUES (?, ?)",
-                (product_id, json.dumps(product))
-            )
-
-            created.append({
-                "product_id": product_id,
-                "title": product["title"],
-                "price": product["price"],
-                "sku": product["sku"],
-            })
-
-        conn.commit()
-        conn.close()
-
-    except Exception as e:
-        logging.exception("❌ Bulk generation failed")
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return {"status": "success", "count": len(created), "products": created}
-
-
-# ---------------------------------------------------
-# Listing Generator
-# ---------------------------------------------------
-
-@app.post("/api/listings/generate")
-def generate_listing(product_id: str):
-    try:
-        listing = generate_listing_from_product(product_id)
-        return {"status": "success", "listing": listing}
-    except Exception as e:
-        logging.exception("❌ Listing generation failed")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ---------------------------------------------------
-# Image Engine
-# ---------------------------------------------------
-
-@app.post("/api/products/generate_image")
-def generate_image(product_id: str):
-    try:
-        path = generate_image_for_product(product_id)
-        return {"status": "success", "product_id": product_id, "image_path": path}
-    except Exception as e:
-        logging.exception("❌ Image generation failed")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/products/generate_images_all")
-def generate_images_all():
-    try:
-        result = generate_images_for_all_products()
-        return {"status": "success", **result}
-    except Exception as e:
-        logging.exception("❌ Bulk image generation failed")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ---------------------------------------------------
-# Gumroad OAuth
-# ---------------------------------------------------
-
-# ---------------- GUMROAD OAUTH ----------------
-
+from pydantic import BaseModel
 import os
 import requests
-from fastapi import Request
-from fastapi.responses import RedirectResponse
-from db import get_db
 
-GUMROAD_CLIENT_ID = os.getenv("GUMROAD_CLIENT_ID")
-GUMROAD_CLIENT_SECRET = os.getenv("GUMROAD_CLIENT_SECRET")
-GUMROAD_REDIRECT_URI = os.getenv("GUMROAD_REDIRECT_URI")
+app = FastAPI(title="JRAVIS Backend")
+
+# -----------------------------
+# CONFIG
+# -----------------------------
+
+GUMROAD_TOKEN = os.getenv("GUMROAD_TOKEN")
+
+if not GUMROAD_TOKEN:
+    print("⚠️ WARNING: GUMROAD_TOKEN not set in environment variables")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Example product folder
+PRODUCT_FOLDER = os.path.join(BASE_DIR, "data", "products")
+
+# -----------------------------
+# MODELS
+# -----------------------------
+
+class GumroadProduct(BaseModel):
+    title: str
+    price: float   # in INR (e.g. 199)
+    description: str
+    filename: str  # only file name, not full path
 
 
-@app.get("/api/auth/gumroad/login")
-def gumroad_login():
-    if not GUMROAD_CLIENT_ID or not GUMROAD_REDIRECT_URI:
-        return {"error": "Missing Gumroad OAuth env vars"}
+# -----------------------------
+# HEALTH CHECK
+# -----------------------------
 
-    url = (
-        "https://gumroad.com/oauth/authorize"
-        f"?client_id={GUMROAD_CLIENT_ID}"
-        f"&redirect_uri={GUMROAD_REDIRECT_URI}"
-        f"&response_type=code"
-        f"&scope=edit_products"
-    )
-    return RedirectResponse(url)
+@app.get("/")
+def health():
+    return {"status": "JRAVIS running"}
 
 
-@app.get("/api/auth/gumroad/callback")
-def gumroad_callback(code: str):
-    if not code:
-        return {"error": "Missing code"}
+# -----------------------------
+# GUMROAD AUTO PUBLISH
+# -----------------------------
 
-    token_url = "https://api.gumroad.com/oauth/token"
+@app.post("/api/gumroad/publish")
+def publish_to_gumroad(product: GumroadProduct):
 
-    data = {
-        "client_id": GUMROAD_CLIENT_ID,
-        "client_secret": GUMROAD_CLIENT_SECRET,
-        "code": code,
-        "grant_type": "authorization_code",
-        "redirect_uri": GUMROAD_REDIRECT_URI,
+    if not GUMROAD_TOKEN:
+        raise HTTPException(status_code=500, detail="GUMROAD_TOKEN missing")
+
+    file_path = os.path.join(PRODUCT_FOLDER, product.filename)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail=f"File not found: {product.filename}")
+
+    # -----------------
+    # 1. CREATE PRODUCT
+    # -----------------
+
+    create_url = "https://api.gumroad.com/v2/products"
+
+    create_data = {
+        "access_token": GUMROAD_TOKEN,
+        "name": product.title,
+        "price": int(product.price * 100),  # paise
+        "description": product.description
     }
 
-    r = requests.post(token_url, data=data)
-    resp = r.json()
+    r = requests.post(create_url, data=create_data).json()
 
-    if "access_token" not in resp:
-        return {"error": "OAuth failed", "resp": resp}
+    if not r.get("success"):
+        raise HTTPException(status_code=400, detail={"step": "create", "response": r})
 
-    access_token = resp["access_token"]
+    gumroad_product_id = r["product"]["id"]
+    gumroad_url = r["product"]["short_url"]
 
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM gumroad_tokens")
-    cur.execute(
-        "INSERT INTO gumroad_tokens (access_token) VALUES (?)",
-        (access_token,),
-    )
-    conn.commit()
+    # -----------------
+    # 2. UPLOAD FILE
+    # -----------------
 
-    return {"status": "success", "message": "Gumroad connected successfully"}
+    upload_url = f"https://api.gumroad.com/v2/products/{gumroad_product_id}/files"
 
+    with open(file_path, "rb") as f:
+        files = {"file": f}
+        upload_data = {"access_token": GUMROAD_TOKEN}
+        u = requests.post(upload_url, files=files, data=upload_data).json()
 
-# ---------------------------------------------------
-# Gumroad Publisher
-# ---------------------------------------------------
-@app.post("/api/publish/gumroad")
-def publish_gumroad(product_id: str):
-    return publish_product_to_gumroad(product_id)
+    if not u.get("success"):
+        raise HTTPException(status_code=400, detail={"step": "upload", "response": u})
+
+    # -----------------
+    # 3. PUBLISH PRODUCT
+    # -----------------
+
+    publish_url = f"https://api.gumroad.com/v2/products/{gumroad_product_id}"
+
+    p = requests.put(publish_url, data={
+        "access_token": GUMROAD_TOKEN,
+        "published": True
+    }).json()
+
+    if not p.get("success"):
+        raise HTTPException(status_code=400, detail={"step": "publish", "response": p})
+
+    return {
+        "status": "published",
+        "product_id": gumroad_product_id,
+        "url": gumroad_url
+    }
