@@ -3,10 +3,15 @@ import os
 
 GUMROAD_TOKEN = os.getenv("GUMROAD_TOKEN")
 
+HEADERS = {
+    "User-Agent": "JRAVIS-Bot/1.0",
+    "Accept": "application/json",
+}
+
 
 def publish_to_gumroad(title, description, price_rs, file_path):
     if not GUMROAD_TOKEN:
-        raise Exception("GUMROAD_TOKEN not set in environment")
+        raise Exception("❌ GUMROAD_TOKEN not set in environment")
 
     print("🟠 Creating Gumroad product...")
 
@@ -19,18 +24,22 @@ def publish_to_gumroad(title, description, price_rs, file_path):
         "description": description,
     }
 
-    r = requests.post(create_url, data=data, timeout=60)
+    r = requests.post(create_url, data=data, headers=HEADERS, timeout=60)
 
     print("🟠 Gumroad create status:", r.status_code)
-    print("🟠 Gumroad create response:", r.text[:500])
+    print("🟠 Gumroad create response (first 300 chars):")
+    print(r.text[:300])
+
+    if not r.text.strip():
+        raise Exception("❌ Empty response from Gumroad API")
 
     try:
         resp = r.json()
     except Exception:
-        raise Exception("Gumroad did not return JSON. Check token and response above.")
+        raise Exception("❌ Gumroad did not return JSON — token or access issue")
 
     if not resp.get("success"):
-        raise Exception(f"Gumroad create failed: {resp}")
+        raise Exception(f"❌ Gumroad create failed: {resp}")
 
     product_id = resp["product"]["id"]
     short_url = resp["product"]["short_url"]
@@ -44,19 +53,24 @@ def publish_to_gumroad(title, description, price_rs, file_path):
             upload_url,
             data={"access_token": GUMROAD_TOKEN},
             files={"file": f},
+            headers=HEADERS,
             timeout=120,
         )
 
     print("📤 Gumroad upload status:", upload.status_code)
-    print("📤 Gumroad upload response:", upload.text[:500])
+    print("📤 Gumroad upload response (first 300 chars):")
+    print(upload.text[:300])
+
+    if not upload.text.strip():
+        raise Exception("❌ Empty upload response from Gumroad")
 
     try:
         up = upload.json()
     except Exception:
-        raise Exception("Gumroad upload did not return JSON")
+        raise Exception("❌ Gumroad upload did not return JSON")
 
     if not up.get("success"):
-        raise Exception(f"Gumroad upload failed: {up}")
+        raise Exception(f"❌ Gumroad upload failed: {up}")
 
     print("🚀 Gumroad product LIVE:", short_url)
     return short_url
