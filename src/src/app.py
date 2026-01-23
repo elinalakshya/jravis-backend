@@ -4,10 +4,14 @@ import os
 import requests
 
 app = FastAPI()
+    
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}
 
 @app.get("/")
 def root():
-    return {"status": "JRAVIS running"}
+    return {"status": "JRAVIS API running"}
 
 # -----------------------------
 # CONFIG
