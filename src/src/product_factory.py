@@ -1,42 +1,37 @@
 import os
-from typing import Dict
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
 import uuid
+from typing import Dict
 
 
 def generate_product() -> Dict:
     title = "Morning Routine Planner – Printable Productivity Toolkit"
-    description = "Morning Routine Planner designed to help users stay consistent, organized, and achieve measurable improvement. Clean printable format."
+    description = (
+        "Morning Routine Planner designed to help users stay consistent,\n"
+        "organized, and achieve measurable improvement.\n\n"
+        "Use this planner daily:\n"
+        "- Morning goals\n"
+        "- Focus block\n"
+        "- Reflection notes\n\n"
+        "Stay consistent. Stay focused."
+    )
     price = 149
 
     os.makedirs("factory_output", exist_ok=True)
 
-    filename = f"planner_{uuid.uuid4().hex[:8]}.pdf"
+    filename = f"planner_{uuid.uuid4().hex[:8]}.txt"
     file_path = os.path.join("factory_output", filename)
 
-    # ---- CREATE SIMPLE PDF ----
-    c = canvas.Canvas(file_path, pagesize=A4)
-    width, height = A4
+    # ---- CREATE TXT DIGITAL PRODUCT ----
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(title + "\n\n")
+        f.write(description)
 
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(50, height - 80, title)
-
-    c.setFont("Helvetica", 12)
-    text = c.beginText(50, height - 130)
-    for line in description.split("."):
-        text.textLine(line.strip())
-    c.drawText(text)
-
-    c.showPage()
-    c.save()
-
-    print("📄 PDF CREATED:", file_path)
+    print("📄 TXT PRODUCT CREATED:", file_path)
 
     return {
-        "zip_path": file_path,      # still named zip_path for engine compatibility
+        "zip_path": file_path,   # engine expects zip_path key
         "name": title,
         "price": price,
-        "description": description
+        "description": description,
     }
 
