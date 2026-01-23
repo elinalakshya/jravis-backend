@@ -4,14 +4,18 @@ import os
 import requests
 
 app = FastAPI()
-    
-@app.get("/healthz")
-def healthz():
-    return {"status": "ok"}
+
+# -----------------------------
+# HEALTH ROUTES (RENDER NEEDS)
+# -----------------------------
 
 @app.get("/")
 def root():
     return {"status": "JRAVIS API running"}
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}
 
 # -----------------------------
 # CONFIG
@@ -23,8 +27,6 @@ if not GUMROAD_TOKEN:
     print("⚠️ WARNING: GUMROAD_TOKEN not set in environment variables")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Example product folder
 PRODUCT_FOLDER = os.path.join(BASE_DIR, "data", "products")
 
 # -----------------------------
@@ -37,18 +39,8 @@ class GumroadProduct(BaseModel):
     description: str
     filename: str  # only file name, not full path
 
-
 # -----------------------------
-# HEALTH CHECK
-# -----------------------------
-
-@app.get("/")
-def health():
-    return {"status": "JRAVIS running"}
-
-
-# -----------------------------
-# GUMROAD AUTO PUBLISH
+# OPTIONAL MANUAL GUMROAD API
 # -----------------------------
 
 @app.post("/api/gumroad/publish")
@@ -62,16 +54,13 @@ def publish_to_gumroad(product: GumroadProduct):
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail=f"File not found: {product.filename}")
 
-    # -----------------
     # 1. CREATE PRODUCT
-    # -----------------
-
     create_url = "https://api.gumroad.com/v2/products"
 
     create_data = {
         "access_token": GUMROAD_TOKEN,
         "name": product.title,
-        "price": int(product.price * 100),  # paise
+        "price": int(product.price * 100),
         "description": product.description
     }
 
@@ -83,10 +72,7 @@ def publish_to_gumroad(product: GumroadProduct):
     gumroad_product_id = r["product"]["id"]
     gumroad_url = r["product"]["short_url"]
 
-    # -----------------
     # 2. UPLOAD FILE
-    # -----------------
-
     upload_url = f"https://api.gumroad.com/v2/products/{gumroad_product_id}/files"
 
     with open(file_path, "rb") as f:
@@ -97,10 +83,7 @@ def publish_to_gumroad(product: GumroadProduct):
     if not u.get("success"):
         raise HTTPException(status_code=400, detail={"step": "upload", "response": u})
 
-    # -----------------
-    # 3. PUBLISH PRODUCT
-    # -----------------
-
+    # 3. PUBLISH
     publish_url = f"https://api.gumroad.com/v2/products/{gumroad_product_id}"
 
     p = requests.put(publish_url, data={
