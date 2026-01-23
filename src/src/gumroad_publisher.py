@@ -15,7 +15,7 @@ def publish_to_gumroad(title, description, price_rs, file_path):
 
     print("🟠 Creating Gumroad product...")
 
-    create_url = "https://api.gumroad.com/v2/products"
+    create_url = "https://api.gumroad.com/v2/products.json"
 
     data = {
         "access_token": GUMROAD_TOKEN,
@@ -46,7 +46,7 @@ def publish_to_gumroad(title, description, price_rs, file_path):
 
     print("📤 Uploading file to Gumroad...")
 
-    upload_url = f"https://api.gumroad.com/v2/products/{product_id}/files"
+    upload_url = f"https://api.gumroad.com/v2/products/{product_id}/files.json"
 
     with open(file_path, "rb") as f:
         upload = requests.post(
