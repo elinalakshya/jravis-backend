@@ -4,37 +4,28 @@ import os
 GUMROAD_TOKEN = os.getenv("GUMROAD_TOKEN")
 PRODUCT_ID = os.getenv("GUMROAD_PRODUCT_ID")
 
-HEADERS = {
-    "User-Agent": "JRAVIS-Bot/1.0",
-    "Accept": "application/json",
-}
-
 
 def publish_to_gumroad(title, description, price_rs, file_path):
     if not GUMROAD_TOKEN:
-        raise Exception("❌ GUMROAD_TOKEN not set in environment")
+        raise Exception("❌ GUMROAD_TOKEN not set")
     if not PRODUCT_ID:
-        raise Exception("❌ GUMROAD_PRODUCT_ID not set in environment")
-
-    auth_headers = {
-        **HEADERS,
-        "Authorization": f"Bearer {GUMROAD_TOKEN}",
-    }
+        raise Exception("❌ GUMROAD_PRODUCT_ID not set")
 
     # -----------------------------
     # UPDATE PRODUCT DETAILS
     # -----------------------------
     print("🟠 Updating Gumroad product details...")
 
-    update_url = f"https://api.gumroad.com/v2/products/{PRODUCT_ID}"
+    update_url = f"https://api.gumroad.com/v2/products/{PRODUCT_ID}.json"
 
     data = {
+        "access_token": GUMROAD_TOKEN,
         "name": title,
         "price": int(price_rs * 100),  # INR → paise
         "description": description,
     }
 
-    u = requests.put(update_url, data=data, headers=auth_headers, timeout=60)
+    u = requests.put(update_url, data=data, timeout=60)
 
     print("🟠 Update status:", u.status_code)
     print("🟠 Update response:", u.text[:300])
@@ -47,13 +38,13 @@ def publish_to_gumroad(title, description, price_rs, file_path):
     # -----------------------------
     print("📤 Uploading new file to Gumroad...")
 
-    upload_url = f"https://api.gumroad.com/v2/products/{PRODUCT_ID}/files"
+    upload_url = f"https://api.gumroad.com/v2/products/{PRODUCT_ID}/files.json"
 
     with open(file_path, "rb") as f:
         upload = requests.post(
             upload_url,
+            data={"access_token": GUMROAD_TOKEN},
             files={"file": f},
-            headers=auth_headers,
             timeout=120,
         )
 
