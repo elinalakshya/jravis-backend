@@ -1,41 +1,44 @@
 import requests
-import uuid
-from settings import PAYHIP_API_KEY, OPENAI_API_KEY
-import openai
+import os
 
-openai.api_key = OPENAI_API_KEY
+PAYHIP_API_KEY = os.getenv("PAYHIP_API_KEY")
 
-def publish_payhip_product():
-    title = "JRAVIS Auto Product " + str(uuid.uuid4())[:6]
 
-    # 1. Generate description
-    response = openai.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": "Create a product description for a digital asset"}]
-    )
-    description = response.choices[0].message.content
+def publish_to_payhip(title, description, price_rs, file_path):
+    if not PAYHIP_API_KEY:
+        raise Exception("❌ PAYHIP_API_KEY not set")
 
-    print("💰 Payhip Product:", title)
+    print("🟣 Creating Payhip product...")
 
-    # 2. Upload a dummy PDF file
-    pdf_data = b"%PDF-1.4 TEST"
+    url = "https://payhip.com/api/v2/products"
+
+    headers = {
+        "Authorization": f"Bearer {PAYHIP_API_KEY}",
+    }
 
     files = {
-        "file": ("product.pdf", pdf_data, "application/pdf")
+        "file": open(file_path, "rb"),
     }
 
     data = {
-        "api_key": PAYHIP_API_KEY,
         "title": title,
-        "price": "299",
-        "description": description
+        "description": description,
+        "price": price_rs,
+        "currency": "INR",
     }
 
-    resp = requests.post(
-        "https://payhip.com/api/v1/products",
-        data=data,
-        files=files
-    ).json()
+    r = requests.post(url, headers=headers, data=data, files=files, timeout=120)
 
-    print("📤 Payhip Published:", resp)
-    return resp
+    print("🟣 Status:", r.status_code)
+    print("🟣 Response:", r.text[:400])
+
+    if r.status_code not in (200, 201):
+        raise Exception("❌ Payhip product creation failed")
+
+    resp = r.json()
+
+    product_url = resp.get("product", {}).get("url") or resp.get("url")
+
+    print("💰 PAYHIP PRODUCT LIVE:", product_url)
+    return product_url
+
