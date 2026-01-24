@@ -1,44 +1,26 @@
-import requests
-import os
+# src/src/publishing_engine.py
 
-PAYHIP_API_KEY = os.getenv("PAYHIP_API_KEY")
+from publisher_payhip import publish_to_payhip
 
 
-def publish_to_payhip(title, description, price_rs, file_path):
-    if not PAYHIP_API_KEY:
-        raise Exception("❌ PAYHIP_API_KEY not set")
+def run_publishers(title: str, description: str, zip_path: str):
+    print("💼 RUNNING PUBLISHERS (PAYHIP ONLY MODE)")
 
-    print("🟣 Creating Payhip product...")
+    results = {}
 
-    url = "https://payhip.com/api/v2/products"
+    try:
+        print("🟣 Publishing to Payhip...")
+        url = publish_to_payhip(
+            title=title,
+            description=description,
+            file_path=zip_path,
+        )
+        results["payhip"] = url
+        print("✅ PAYHIP DONE:", url)
 
-    headers = {
-        "Authorization": f"Bearer {PAYHIP_API_KEY}",
-    }
+    except Exception as e:
+        print("❌ PAYHIP FAILED:", str(e))
+        results["payhip"] = None
 
-    files = {
-        "file": open(file_path, "rb"),
-    }
-
-    data = {
-        "title": title,
-        "description": description,
-        "price": price_rs,
-        "currency": "INR",
-    }
-
-    r = requests.post(url, headers=headers, data=data, files=files, timeout=120)
-
-    print("🟣 Status:", r.status_code)
-    print("🟣 Response:", r.text[:400])
-
-    if r.status_code not in (200, 201):
-        raise Exception("❌ Payhip product creation failed")
-
-    resp = r.json()
-
-    product_url = resp.get("product", {}).get("url") or resp.get("url")
-
-    print("💰 PAYHIP PRODUCT LIVE:", product_url)
-    return product_url
+    return results
 
