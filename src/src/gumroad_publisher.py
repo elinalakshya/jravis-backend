@@ -5,8 +5,18 @@ GUMROAD_TOKEN = os.getenv("GUMROAD_TOKEN")
 
 
 def publish_to_gumroad(title, description, price_rs, file_path):
+    print("🔐 TOKEN PRESENT:", bool(GUMROAD_TOKEN))
+    if GUMROAD_TOKEN:
+        print("🔐 TOKEN PREFIX:", GUMROAD_TOKEN[:6])
+
     if not GUMROAD_TOKEN:
         raise Exception("❌ GUMROAD_TOKEN not set")
+
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": "JRAVIS-Bot/1.0",
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
 
     # -----------------------------
     # 1. CREATE PRODUCT
@@ -18,19 +28,24 @@ def publish_to_gumroad(title, description, price_rs, file_path):
     data = {
         "access_token": GUMROAD_TOKEN,
         "name": title,
-        "price": int(price_rs * 100),  # INR → paise
+        "price": int(price_rs * 100),
         "description": description,
     }
 
-    r = requests.post(create_url, data=data, timeout=60)
+    r = requests.post(create_url, data=data, headers=headers, timeout=60)
 
     print("🟢 Create status:", r.status_code)
-    print("🟢 Create response:", r.text[:300])
+    print("🟢 Create headers:", r.headers.get("content-type"))
+    print("🟢 Create response preview:")
+    print(r.text[:500])
+
+    if r.status_code not in (200, 201):
+        raise Exception("❌ Gumroad create HTTP failed")
 
     try:
         resp = r.json()
     except Exception:
-        raise Exception("❌ Gumroad create did not return JSON")
+        raise Exception("❌ Gumroad create not returning JSON (likely auth blocked)")
 
     if not resp.get("success"):
         raise Exception(f"❌ Gumroad create failed: {resp}")
@@ -52,11 +67,13 @@ def publish_to_gumroad(title, description, price_rs, file_path):
             upload_url,
             data={"access_token": GUMROAD_TOKEN},
             files={"file": f},
+            headers={"Accept": "application/json"},
             timeout=120,
         )
 
     print("📤 Upload status:", upload.status_code)
-    print("📤 Upload response:", upload.text[:300])
+    print("📤 Upload response preview:")
+    print(upload.text[:300])
 
     if upload.status_code not in (200, 201):
         raise Exception("❌ Gumroad upload failed")
@@ -74,11 +91,13 @@ def publish_to_gumroad(title, description, price_rs, file_path):
             "access_token": GUMROAD_TOKEN,
             "published": True,
         },
+        headers={"Accept": "application/json"},
         timeout=60,
     )
 
     print("🚀 Publish status:", p.status_code)
-    print("🚀 Publish response:", p.text[:300])
+    print("🚀 Publish response preview:")
+    print(p.text[:300])
 
     if p.status_code not in (200, 201):
         raise Exception("❌ Gumroad publish failed")
