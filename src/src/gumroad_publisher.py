@@ -12,7 +12,7 @@ def publish_to_gumroad(title, description, price_rs, file_path):
         raise Exception("❌ GUMROAD_PRODUCT_ID not set")
 
     # -----------------------------
-    # UPDATE PRODUCT DETAILS
+    # UPDATE PRODUCT DETAILS (POST)
     # -----------------------------
     print("🟠 Updating Gumroad product details...")
 
@@ -25,10 +25,11 @@ def publish_to_gumroad(title, description, price_rs, file_path):
         "description": description,
     }
 
-    u = requests.put(update_url, data=data, timeout=60)
+    u = requests.post(update_url, data=data, timeout=60)
 
     print("🟠 Update status:", u.status_code)
-    print("🟠 Update response:", u.text[:300])
+    print("🟠 Update response FULL:")
+    print(u.text)
 
     if u.status_code not in (200, 201):
         raise Exception("❌ Gumroad product update failed")
@@ -49,7 +50,8 @@ def publish_to_gumroad(title, description, price_rs, file_path):
         )
 
     print("📤 Upload status:", upload.status_code)
-    print("📤 Upload response:", upload.text[:300])
+    print("📤 Upload response FULL:")
+    print(upload.text)
 
     try:
         up = upload.json()
