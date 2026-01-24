@@ -1,30 +1,22 @@
-# src/src/publishing_engine.py
-
-import traceback
-from gumroad_publisher import publish_to_gumroad
+from publisher_payhip import publish_to_payhip
 
 
-def run_publishers(title: str, description: str, zip_path: str):
-    print("💼 RUNNING PUBLISHERS (GUMROAD ONLY MODE)")
+def run_publishers(title, description, zip_path):
+    print("💼 RUNNING PUBLISHERS (PAYHIP MODE)")
 
     results = {}
 
     try:
-        print("🟠 Publishing to Gumroad...")
-        gumroad_url = publish_to_gumroad(
+        print("🟣 Publishing to Payhip...")
+        url = publish_to_payhip(
             title=title,
             description=description,
-            price_rs=199,
+            price_rs=149,
             file_path=zip_path,
         )
-        results["gumroad"] = gumroad_url
-        print("✅ Gumroad SUCCESS:", gumroad_url)
-
+        results["payhip"] = url
     except Exception as e:
-        print("❌ Gumroad FAILED:", e)
-        traceback.print_exc()
-        results["gumroad"] = None
+        print("❌ Payhip FAILED:", e)
+        results["payhip"] = None
 
-    print("🏁 PUBLISHING FINISHED")
     return results
-
