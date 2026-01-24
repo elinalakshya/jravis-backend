@@ -1,4 +1,4 @@
-# src/src/publishing_engine.py
+# PAYHIP ONLY PUBLISHING ENGINE
 
 from publisher_payhip import publish_to_payhip
 
