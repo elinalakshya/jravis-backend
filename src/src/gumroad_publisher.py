@@ -13,7 +13,7 @@ def publish_to_gumroad(title, description, price_rs, file_path):
 
     print("📤 Uploading new file to Gumroad product shell...")
 
-    upload_url = f"https://api.gumroad.com/v2/products/{PRODUCT_ID}/files.json"
+    upload_url = f"https://api.gumroad.com/v2/products/{PRODUCT_ID}/files"
 
     with open(file_path, "rb") as f:
         upload = requests.post(
@@ -21,19 +21,16 @@ def publish_to_gumroad(title, description, price_rs, file_path):
             data={"access_token": GUMROAD_TOKEN},
             files={"file": f},
             timeout=120,
+            allow_redirects=True,
         )
 
     print("📤 Upload status:", upload.status_code)
-    print("📤 Upload response FULL:")
-    print(upload.text)
+    print("📤 Upload headers:", upload.headers.get("content-type"))
+    print("📤 Upload response preview:")
+    print(upload.text[:300])
 
-    try:
-        up = upload.json()
-    except Exception:
-        raise Exception("❌ Gumroad upload did not return JSON")
-
-    if not up.get("success"):
-        raise Exception(f"❌ Gumroad upload failed: {up}")
+    if upload.status_code not in (200, 201):
+        raise Exception("❌ Gumroad upload failed (status not OK)")
 
     print("🚀 Gumroad file uploaded successfully")
     return True
