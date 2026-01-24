@@ -2,18 +2,50 @@ import requests
 import os
 
 GUMROAD_TOKEN = os.getenv("GUMROAD_TOKEN")
-PRODUCT_ID = os.getenv("GUMROAD_PRODUCT_ID")
 
 
 def publish_to_gumroad(title, description, price_rs, file_path):
     if not GUMROAD_TOKEN:
         raise Exception("❌ GUMROAD_TOKEN not set")
-    if not PRODUCT_ID:
-        raise Exception("❌ GUMROAD_PRODUCT_ID not set")
 
-    print("📤 Uploading new file to Gumroad product shell...")
+    # -----------------------------
+    # 1. CREATE PRODUCT
+    # -----------------------------
+    print("🟢 Creating new Gumroad product...")
 
-    upload_url = f"https://api.gumroad.com/v2/products/{PRODUCT_ID}/files"
+    create_url = "https://api.gumroad.com/v2/products"
+
+    data = {
+        "access_token": GUMROAD_TOKEN,
+        "name": title,
+        "price": int(price_rs * 100),  # INR → paise
+        "description": description,
+    }
+
+    r = requests.post(create_url, data=data, timeout=60)
+
+    print("🟢 Create status:", r.status_code)
+    print("🟢 Create response:", r.text[:300])
+
+    try:
+        resp = r.json()
+    except Exception:
+        raise Exception("❌ Gumroad create did not return JSON")
+
+    if not resp.get("success"):
+        raise Exception(f"❌ Gumroad create failed: {resp}")
+
+    product_id = resp["product"]["id"]
+    product_url = resp["product"]["short_url"]
+
+    print("✅ Product created:", product_id)
+
+    # -----------------------------
+    # 2. UPLOAD FILE
+    # -----------------------------
+    print("📤 Uploading file to Gumroad...")
+
+    upload_url = f"https://api.gumroad.com/v2/products/{product_id}/files"
 
     with open(file_path, "rb") as f:
         upload = requests.post(
@@ -21,17 +53,36 @@ def publish_to_gumroad(title, description, price_rs, file_path):
             data={"access_token": GUMROAD_TOKEN},
             files={"file": f},
             timeout=120,
-            allow_redirects=True,
         )
 
     print("📤 Upload status:", upload.status_code)
-    print("📤 Upload headers:", upload.headers.get("content-type"))
-    print("📤 Upload response preview:")
-    print(upload.text[:300])
+    print("📤 Upload response:", upload.text[:300])
 
     if upload.status_code not in (200, 201):
-        raise Exception("❌ Gumroad upload failed (status not OK)")
+        raise Exception("❌ Gumroad upload failed")
 
-    print("🚀 Gumroad file uploaded successfully")
-    return True
+    # -----------------------------
+    # 3. PUBLISH PRODUCT
+    # -----------------------------
+    print("🚀 Publishing product...")
+
+    publish_url = f"https://api.gumroad.com/v2/products/{product_id}"
+
+    p = requests.put(
+        publish_url,
+        data={
+            "access_token": GUMROAD_TOKEN,
+            "published": True,
+        },
+        timeout=60,
+    )
+
+    print("🚀 Publish status:", p.status_code)
+    print("🚀 Publish response:", p.text[:300])
+
+    if p.status_code not in (200, 201):
+        raise Exception("❌ Gumroad publish failed")
+
+    print("💰 PRODUCT LIVE:", product_url)
+    return product_url
 
