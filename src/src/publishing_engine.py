@@ -1,3 +1,2 @@
-def run_publishers(*args, **kwargs):
-    print("⚠️ Publishing disabled (manual upload mode)")
+def run_publishers(**kwargs):
     return {}
