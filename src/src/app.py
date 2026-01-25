@@ -17,20 +17,24 @@ def health():
 
 @app.post("/api/factory/generate")
 def factory_generate():
-    print("🔥 FACTORY API TRIGGERED")
+    try:
+        print("🔥 FACTORY API TRIGGERED")
 
-    product = generate_product()
+        product = generate_product()
 
-    result = run_all_streams_micro_engine(
-        file_path=product["file_path"],
-        title=product["title"],
-        description=product["description"],
-        price=product["price"],
-    )
+        run_all_streams_micro_engine(
+            file_path=product["file_path"],
+            title=product["title"],
+            description=product["description"],
+            price=product["price"],
+        )
 
-    return {
-        "status": "success",
-        "product": product["title"],
-        "download_path": product["file_path"],
-        "pipeline": result,
-    }
+        return {
+            "status": "success",
+            "product": product["title"],
+            "download_path": product["file_path"],
+        }
+
+    except Exception as e:
+        print("❌ FACTORY ERROR:", e)
+        return {"status": "error", "msg": str(e)}
