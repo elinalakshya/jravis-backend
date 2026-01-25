@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from product_factory import generate_product
 from unified_engine import run_all_streams_micro_engine
 
 app = FastAPI()
@@ -16,14 +15,9 @@ def health():
 
 
 @app.post("/api/factory/generate")
-def factory_generate():
-    print("🔥 FACTORY API TRIGGERED")
-
-    product = generate_product()
-    result = run_all_streams_micro_engine(product)
-
-    return {
-        "status": "success",
-        "product": product["title"],
-        "download_zip": result["download_zip"],
-    }
+def generate():
+    try:
+        result = run_all_streams_micro_engine()
+        return {"status": "success", **result}
+    except Exception as e:
+        return {"status": "error", "msg": str(e)}
