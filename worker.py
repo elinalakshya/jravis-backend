@@ -1,56 +1,49 @@
+# worker.py
 import time
 import os
-import sys
 
-# Add src/src to path
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SRC_PATH = os.path.join(BASE_DIR, "src", "src")
-sys.path.append(SRC_PATH)
-
-print("🔧 SRC_PATH =", SRC_PATH)
-
-from product_factory import generate_product
 from unified_engine import run_all_streams_micro_engine
+from product_factory import generate_product
 
+print("🚀 WORKER ONLINE")
 
-def run_cycle():
-    print("🔥 RUNNING CYCLE")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "factory_output")
 
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+while True:
     try:
-        # 1. Generate product locally
+        print("\n🔥 RUNNING CYCLE")
+
+        # ----------------------------
+        # 1. GENERATE PRODUCT
+        # ----------------------------
         product = generate_product()
 
-        # Expecting dict with zip + name
-        zip_path = product.get("zip_path") or product.get("zip")
-        template_name = product.get("name") or product.get("template_name")
-
-        if not zip_path or not template_name:
+        if not product or "file_path" not in product:
             print("❌ Factory returned invalid product:", product)
-            return
+            time.sleep(60)
+            continue
 
-        print("📦 PRODUCT READY:", zip_path, template_name)
+        print("📦 PRODUCT READY:", product["file_path"], product["title"])
 
-        # 2. Publish to platforms (Gumroad)
-        run_all_streams_micro_engine(
-            zip_path=zip_path,
-            template_name=template_name,
+        # ----------------------------
+        # 2. PUBLISH
+        # ----------------------------
+        print("🚀 CALLING UNIFIED ENGINE")
+
+        results = run_all_streams_micro_engine(
+            zip_path=product["file_path"],
+            template_name=product["title"],
             backend_url="local",
         )
+
+        print("🟢 PUBLISH RESULT:", results)
 
     except Exception as e:
         print("❌ WORKER ERROR:", e)
 
-
-def main():
-    print("🚀 WORKER ONLINE")
-
-    os.makedirs("factory_output", exist_ok=True)
-
-    while True:
-        run_cycle()
-        time.sleep(60)  # every 1 minute
-
-
-if __name__ == "__main__":
-    main()
+    print("⏳ Sleeping 10 minutes...\n")
+    time.sleep(600)
 

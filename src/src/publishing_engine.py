@@ -1,26 +1,23 @@
-# PAYHIP ONLY PUBLISHING ENGINE
-
 from publisher_payhip import publish_to_payhip
 
 
-def run_publishers(title: str, description: str, zip_path: str):
+def run_publishers(title, description, zip_path):
     print("💼 RUNNING PUBLISHERS (PAYHIP ONLY MODE)")
 
     results = {}
 
     try:
         print("🟣 Publishing to Payhip...")
-        url = publish_to_payhip(
+        payhip_url = publish_to_payhip(
             title=title,
             description=description,
             file_path=zip_path,
         )
-        results["payhip"] = url
-        print("✅ PAYHIP DONE:", url)
-
+        results["payhip"] = payhip_url
     except Exception as e:
-        print("❌ PAYHIP FAILED:", str(e))
+        print("❌ PAYHIP FAILED:", e)
         results["payhip"] = None
 
+    print("🏁 PUBLISHING FINISHED")
     return results
 
