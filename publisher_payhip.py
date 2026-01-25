@@ -1,60 +1,71 @@
-# publisher_payhip.py
-
 import os
 import requests
 
-
 PAYHIP_API_KEY = os.getenv("PAYHIP_API_KEY")
 
+BASE_URL = "https://payhip.com/api/v2"
 
-def publish_to_payhip(title: str, description: str, file_path: str):
-    print("🟣 PAYHIP API CALL STARTED")
+
+def publish_to_payhip(title, description, file_path, price=199):
+    print("🟣 PAYHIP PUBLISHER STARTED")
 
     if not PAYHIP_API_KEY:
-        raise Exception("❌ PAYHIP_API_KEY not set")
+        print("❌ PAYHIP_API_KEY not set")
+        return None
 
-    if not os.path.exists(file_path):
-        raise Exception(f"❌ File not found: {file_path}")
+    print("🔐 PAYHIP KEY PREFIX:", PAYHIP_API_KEY[:5])
 
-    url = "https://payhip.com/api/v2/products"
+    # ---------------------------
+    # 1. CREATE PRODUCT
+    # ---------------------------
+    url = f"{BASE_URL}/products"
 
     headers = {
-        "Authorization": f"Bearer {PAYHIP_API_KEY}"
+        "Authorization": f"Bearer {PAYHIP_API_KEY}",
     }
 
     data = {
         "title": title,
         "description": description,
-        "price": "199",  # INR — you can later make dynamic
-        "currency": "INR"
+        "price": price,
+        "currency": "INR",
     }
 
-    files = {
-        "file": open(file_path, "rb")
-    }
+    r = requests.post(url, headers=headers, data=data)
 
-    print("🟣 Uploading product to Payhip...")
+    print("🟣 CREATE STATUS:", r.status_code)
+    print("🟣 CREATE RESPONSE:", r.text[:300])
 
-    r = requests.post(url, headers=headers, data=data, files=files, timeout=120)
+    if r.status_code not in [200, 201]:
+        print("❌ Payhip create failed")
+        return None
 
-    print("🟣 Payhip status:", r.status_code)
-    print("🟣 Payhip response:", r.text[:500])
+    product = r.json()
+    product_id = product.get("id")
 
-    if r.status_code not in (200, 201):
-        raise Exception("❌ Payhip upload failed")
+    if not product_id:
+        print("❌ No product ID from Payhip")
+        return None
 
-    try:
-        resp = r.json()
-    except Exception:
-        raise Exception("❌ Payhip did not return JSON")
+    print("✅ PAYHIP PRODUCT ID:", product_id)
 
-    product_url = resp.get("url") or resp.get("product_url")
+    # ---------------------------
+    # 2. UPLOAD FILE
+    # ---------------------------
+    upload_url = f"{BASE_URL}/products/{product_id}/files"
 
-    if not product_url:
-        print("⚠️ Payhip response JSON:", resp)
-        raise Exception("❌ Payhip product URL not found")
+    with open(file_path, "rb") as f:
+        files = {"file": f}
+        ur = requests.post(upload_url, headers=headers, files=files)
 
-    print("🟢 PAYHIP DONE:", product_url)
+    print("🟣 UPLOAD STATUS:", ur.status_code)
+    print("🟣 UPLOAD RESPONSE:", ur.text[:300])
 
-    return product_url
+    if ur.status_code not in [200, 201]:
+        print("❌ Payhip file upload failed")
+        return None
+
+    print("🎉 PAYHIP PUBLISHED SUCCESSFULLY")
+
+    return product.get("permalink") or product.get("url")
 
