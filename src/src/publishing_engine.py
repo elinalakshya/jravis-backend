@@ -2,22 +2,20 @@ from publisher_payhip import publish_to_payhip
 
 
 def run_publishers(title, description, zip_path):
-    print("💼 RUNNING PUBLISHERS (PAYHIP MODE)")
+    print("💼 RUNNING PUBLISHERS (PAYHIP DEBUG MODE)")
 
     result = {}
 
     try:
-        print("🟣 Publishing to Payhip...")
-        url = publish_to_payhip(
+        debug = publish_to_payhip(
             title=title,
             description=description,
             file_path=zip_path,
             price=199,
         )
-        result["payhip"] = url
+        result["payhip"] = debug
     except Exception as e:
-        print("❌ PAYHIP ERROR:", e)
-        result["payhip"] = None
+        result["payhip"] = {"exception": str(e)}
 
     return result
 
