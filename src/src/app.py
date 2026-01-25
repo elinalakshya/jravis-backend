@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+import os
+import traceback
 
 from product_factory import generate_product
 from unified_engine import run_all_streams_micro_engine
@@ -9,48 +11,58 @@ app = FastAPI()
 # -----------------------------
 # HEALTH
 # -----------------------------
-
 @app.get("/")
 def root():
-    return {"status": "JRAVIS running"}
+    return {"status": "JRAVIS API running"}
+
 
 @app.get("/healthz")
 def health():
-    return {"status": "ok"}
+    return {"ok": True}
 
 
 # -----------------------------
 # FACTORY → PUBLISH PIPELINE
 # -----------------------------
-from unified_engine import run_all_streams_micro_engine
-
 @app.post("/api/factory/generate")
 def factory_generate():
 
-    product = generate_product()
+    print("🔥 FACTORY API TRIGGERED")
 
     try:
-        result = run_all_streams_micro_engine(
-            file_path=product["file_path"],
+        # 1. CREATE PRODUCT
+        product = generate_product()
+
+        if not product or "file_path" not in product:
+            return {
+                "status": "error",
+                "msg": "Invalid product structure",
+                "product": product,
+            }
+
+        print("📄 PRODUCT FILE :", product["file_path"])
+        print("📦 PRODUCT TITLE:", product["title"])
+        print("💰 PRICE        :", product["price"])
+
+        # 2. PUBLISH
+        publish_result = run_all_streams_micro_engine(
             title=product["title"],
-            price=product["price"]
+            description=product["description"],
+            price=product["price"],
+            zip_path=product["file_path"],   # ✅ FIXED (was file_path earlier)
         )
 
         return {
             "status": "success",
             "product": product["title"],
-            "publish_result": result
+            "publish_result": publish_result,
         }
-
-    except Exception as e:
-        return {
-            "status": "error",
-            "msg": str(e),
-            "product": product
-        }
-
 
     except Exception as e:
         print("❌ FACTORY ERROR:", e)
-        return {"status": "error", "msg": str(e)}
+        traceback.print_exc()
 
+        return {
+            "status": "error",
+            "msg": str(e),
+        }
