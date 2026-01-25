@@ -3,7 +3,7 @@ import requests
 
 PAYHIP_API_KEY = os.getenv("PAYHIP_API_KEY")
 
-BASE_URL = "https://payhip.com/api/v2"
+BASE_URL = "https://payhip.com/api/v2/products"
 
 
 def publish_to_payhip(title, description, file_path, price=199):
@@ -14,11 +14,6 @@ def publish_to_payhip(title, description, file_path, price=199):
         return None
 
     print("🔐 PAYHIP KEY PREFIX:", PAYHIP_API_KEY[:5])
-
-    # ---------------------------
-    # 1. CREATE PRODUCT
-    # ---------------------------
-    url = f"{BASE_URL}/products"
 
     headers = {
         "Authorization": f"Bearer {PAYHIP_API_KEY}",
@@ -31,41 +26,37 @@ def publish_to_payhip(title, description, file_path, price=199):
         "currency": "INR",
     }
 
-    r = requests.post(url, headers=headers, data=data)
-
-    print("🟣 CREATE STATUS:", r.status_code)
-    print("🟣 CREATE RESPONSE:", r.text[:300])
-
-    if r.status_code not in [200, 201]:
-        print("❌ Payhip create failed")
-        return None
-
-    product = r.json()
-    product_id = product.get("id")
-
-    if not product_id:
-        print("❌ No product ID from Payhip")
-        return None
-
-    print("✅ PAYHIP PRODUCT ID:", product_id)
-
-    # ---------------------------
-    # 2. UPLOAD FILE
-    # ---------------------------
-    upload_url = f"{BASE_URL}/products/{product_id}/files"
+    print("🟣 Creating Payhip product with file upload...")
 
     with open(file_path, "rb") as f:
-        files = {"file": f}
-        ur = requests.post(upload_url, headers=headers, files=files)
+        files = {
+            "file": f
+        }
 
-    print("🟣 UPLOAD STATUS:", ur.status_code)
-    print("🟣 UPLOAD RESPONSE:", ur.text[:300])
+        r = requests.post(
+            BASE_URL,
+            headers=headers,
+            data=data,
+            files=files,
+            timeout=60,
+        )
 
-    if ur.status_code not in [200, 201]:
-        print("❌ Payhip file upload failed")
+    print("🟣 STATUS:", r.status_code)
+    print("🟣 RESPONSE:", r.text[:500])
+
+    if r.status_code not in [200, 201]:
+        print("❌ Payhip publish failed")
         return None
 
-    print("🎉 PAYHIP PUBLISHED SUCCESSFULLY")
+    try:
+        resp = r.json()
+    except Exception:
+        print("❌ Payhip did not return JSON")
+        return None
 
-    return product.get("permalink") or product.get("url")
+    url = resp.get("permalink") or resp.get("url")
+
+    print("🎉 PAYHIP PUBLISHED:", url)
+
+    return url
 

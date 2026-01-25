@@ -20,3 +20,4 @@ def run_publishers(title, description, zip_path):
         result["payhip"] = None
 
     return result
+
