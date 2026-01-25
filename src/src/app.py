@@ -7,7 +7,7 @@ from unified_engine import run_all_streams_micro_engine
 app = FastAPI()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(BASE_DIR, "..", "..", "factory_output")
+OUTPUT_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "..", "factory_output"))
 
 
 @app.get("/")
@@ -25,7 +25,8 @@ def generate_factory_product():
     try:
         product = run_all_streams_micro_engine()
 
-        download_url = f"/api/factory/download/{product['zip_path']}"
+        filename = product["zip_path"]
+        download_url = f"/api/factory/download/{filename}"
 
         return {
             "status": "success",
@@ -48,5 +49,5 @@ def download_file(filename: str):
     return FileResponse(
         file_path,
         filename=filename,
-        media_type="application/zip"
+        media_type="application/zip",
     )
