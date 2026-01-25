@@ -1,16 +1,17 @@
-# src/src/product_factory.py
-
 import os
 import uuid
+import zipfile
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 
-FACTORY_DIR = "factory_output"
-os.makedirs(FACTORY_DIR, exist_ok=True)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "..", "..", "factory_output")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 def generate_product():
-    product_id = str(uuid.uuid4())[:8]
-
     title = "Morning Routine Planner – Printable Productivity Toolkit"
+
     description = (
         "Morning Routine Planner designed to help users stay consistent,\n"
         "organized, and achieve measurable improvement.\n\n"
@@ -20,18 +21,40 @@ def generate_product():
         "- Reflection notes\n\n"
         "Stay consistent. Stay focused."
     )
-    price = 149  # INR
 
-    file_path = os.path.join(FACTORY_DIR, f"planner_{product_id}.txt")
+    price = 149
 
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(title + "\n\n" + description)
+    uid = uuid.uuid4().hex[:8]
+    pdf_name = f"planner_{uid}.pdf"
+    zip_name = f"planner_pack_{uid}.zip"
 
-    print("📄 TXT PRODUCT CREATED:", file_path)
+    pdf_path = os.path.join(OUTPUT_DIR, pdf_name)
+    zip_path = os.path.join(OUTPUT_DIR, zip_name)
+
+    # ---------- CREATE PDF ----------
+    c = canvas.Canvas(pdf_path, pagesize=A4)
+    width, height = A4
+
+    y = height - 60
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(50, y, title)
+
+    y -= 40
+    c.setFont("Helvetica", 11)
+    for line in description.split("\n"):
+        c.drawString(50, y, line)
+        y -= 16
+
+    c.showPage()
+    c.save()
+
+    # ---------- CREATE ZIP ----------
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.write(pdf_path, arcname=pdf_name)
 
     return {
         "title": title,
         "description": description,
         "price": price,
-        "file_path": file_path,
+        "zip_path": zip_name,   # only filename for download route
     }
