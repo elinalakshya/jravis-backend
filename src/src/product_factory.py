@@ -1,15 +1,16 @@
 import os
 import uuid
-from typing import Dict
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "factory_output")
 
-OUTPUT_DIR = "factory_output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
-def generate_product() -> Dict:
-    title = "Morning Routine Planner – Printable Productivity Toolkit"
+def generate_product():
+    uid = uuid.uuid4().hex[:8]
 
+    title = "Morning Routine Planner – Printable Productivity Toolkit"
     description = (
         "Morning Routine Planner designed to help users stay consistent,\n"
         "organized, and achieve measurable improvement.\n\n"
@@ -19,19 +20,18 @@ def generate_product() -> Dict:
         "- Reflection notes\n\n"
         "Stay consistent. Stay focused."
     )
+    price = 149
 
-    price = 149  # INR
+    filename = f"planner_{uid}.txt"
+    file_path = os.path.join(OUTPUT_DIR, filename)
 
-    filename = f"planner_{uuid.uuid4().hex[:8]}.txt"
-    path = os.path.join(OUTPUT_DIR, filename)
-
-    with open(path, "w") as f:
+    with open(file_path, "w") as f:
         f.write(title + "\n\n" + description)
 
-    print("📄 TXT PRODUCT CREATED:", path)
+    print(f"📄 TXT PRODUCT CREATED: {file_path}")
 
-   return {
-    "file_path": file_path,
-    "title": title,
-    "price": price
-}
+    return {
+        "file_path": file_path,
+        "title": title,
+        "price": price
+    }
