@@ -1,19 +1,18 @@
-from fastapi import FastAPI
 import os
-import traceback
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 
-from product_factory import generate_product
 from unified_engine import run_all_streams_micro_engine
 
 app = FastAPI()
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "..", "..", "factory_output")
 
-# -----------------------------
-# HEALTH
-# -----------------------------
+
 @app.get("/")
 def root():
-    return {"status": "JRAVIS API running"}
+    return {"status": "JRAVIS DRAFT FACTORY ONLINE"}
 
 
 @app.get("/healthz")
@@ -21,48 +20,33 @@ def health():
     return {"ok": True}
 
 
-# -----------------------------
-# FACTORY → PUBLISH PIPELINE
-# -----------------------------
 @app.post("/api/factory/generate")
-def factory_generate():
-
-    print("🔥 FACTORY API TRIGGERED")
-
+def generate_factory_product():
     try:
-        # 1. CREATE PRODUCT
-        product = generate_product()
+        product = run_all_streams_micro_engine()
 
-        if not product or "file_path" not in product:
-            return {
-                "status": "error",
-                "msg": "Invalid product structure",
-                "product": product,
-            }
-
-        print("📄 PRODUCT FILE :", product["file_path"])
-        print("📦 PRODUCT TITLE:", product["title"])
-        print("💰 PRICE        :", product["price"])
-
-        # 2. PUBLISH
-        publish_result = run_all_streams_micro_engine(
-            title=product["title"],
-            description=product["description"],
-            price=product["price"],
-            zip_path=product["file_path"],   # ✅ FIXED (was file_path earlier)
-        )
+        download_url = f"/api/factory/download/{product['zip_path']}"
 
         return {
             "status": "success",
             "product": product["title"],
-            "publish_result": publish_result,
+            "price": product["price"],
+            "download": download_url,
         }
 
     except Exception as e:
-        print("❌ FACTORY ERROR:", e)
-        traceback.print_exc()
+        return {"status": "error", "msg": str(e)}
 
-        return {
-            "status": "error",
-            "msg": str(e),
-        }
+
+@app.get("/api/factory/download/{filename}")
+def download_file(filename: str):
+    file_path = os.path.join(OUTPUT_DIR, filename)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(
+        file_path,
+        filename=filename,
+        media_type="application/zip"
+    )
