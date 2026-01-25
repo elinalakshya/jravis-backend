@@ -1,8 +1,9 @@
-def run_all_streams_micro_engine(product):
-    print("🚀 UNIFIED ENGINE STARTED")
-    print("📦 ZIP PATH :", product["zip_path"])
-    print("🧩 TITLE    :", product["title"])
+from product_factory import generate_product
 
+
+def run_all_streams_micro_engine():
+    product = generate_product()
     return {
-        "download_zip": product["zip_path"]
+        "product": product["title"],
+        "download_zip": product["zip_path"],
     }
