@@ -7,6 +7,7 @@ def run_all_streams_micro_engine(file_path, title, description, price):
     print("🧩 TITLE     :", title)
     print("💰 PRICE     :", price)
 
+    print("📤 STARTING PUBLISHING PIPELINE")
     results = run_publishers(
         file_path=file_path,
         title=title,
