@@ -25,7 +25,6 @@ def health():
 # -----------------------------
 # FACTORY GENERATE
 # -----------------------------
-
 @app.post("/api/factory/generate")
 def factory_generate():
     print("🔥 FACTORY API TRIGGERED")
@@ -61,9 +60,8 @@ def factory_generate():
 
 
 # -----------------------------
-# DOWNLOAD ENDPOINT
+# DOWNLOAD
 # -----------------------------
-
 @app.get("/api/factory/download/{filename}")
 def download_file(filename: str):
     file_path = os.path.join(OUTPUT_DIR, filename)
