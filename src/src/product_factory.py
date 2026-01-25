@@ -1,14 +1,14 @@
+# src/src/product_factory.py
+
 import os
 import uuid
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(BASE_DIR, "factory_output")
-
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+FACTORY_DIR = "factory_output"
+os.makedirs(FACTORY_DIR, exist_ok=True)
 
 
 def generate_product():
-    uid = uuid.uuid4().hex[:8]
+    product_id = str(uuid.uuid4())[:8]
 
     title = "Morning Routine Planner – Printable Productivity Toolkit"
     description = (
@@ -20,18 +20,18 @@ def generate_product():
         "- Reflection notes\n\n"
         "Stay consistent. Stay focused."
     )
-    price = 149
+    price = 149  # INR
 
-    filename = f"planner_{uid}.txt"
-    file_path = os.path.join(OUTPUT_DIR, filename)
+    file_path = os.path.join(FACTORY_DIR, f"planner_{product_id}.txt")
 
-    with open(file_path, "w") as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         f.write(title + "\n\n" + description)
 
-    print(f"📄 TXT PRODUCT CREATED: {file_path}")
+    print("📄 TXT PRODUCT CREATED:", file_path)
 
     return {
-        "file_path": file_path,
         "title": title,
-        "price": price
+        "description": description,
+        "price": price,
+        "file_path": file_path,
     }
