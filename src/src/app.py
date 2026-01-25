@@ -1,18 +1,20 @@
-import os
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
+import os
 
+from product_factory import generate_product
 from unified_engine import run_all_streams_micro_engine
 
 app = FastAPI()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "..", "factory_output"))
+OUTPUT_DIR = os.path.join(BASE_DIR, "..", "..", "factory_output")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 @app.get("/")
 def root():
-    return {"status": "JRAVIS DRAFT FACTORY ONLINE"}
+    return {"status": "JRAVIS API running"}
 
 
 @app.get("/healthz")
@@ -20,24 +22,47 @@ def health():
     return {"ok": True}
 
 
+# -----------------------------
+# FACTORY GENERATE
+# -----------------------------
+
 @app.post("/api/factory/generate")
-def generate_factory_product():
+def factory_generate():
+    print("🔥 FACTORY API TRIGGERED")
+
+    product = generate_product()
+
+    file_path = product["file_path"]
+    title = product["title"]
+    description = product["description"]
+    price = product["price"]
+
+    print("📦 PRODUCT TITLE:", title)
+    print("📄 PRODUCT FILE :", file_path)
+    print("💰 PRICE        :", price)
+
     try:
-        product = run_all_streams_micro_engine()
-
-        filename = product["zip_path"]
-        download_url = f"/api/factory/download/{filename}"
-
-        return {
-            "status": "success",
-            "product": product["title"],
-            "price": product["price"],
-            "download": download_url,
-        }
-
+        run_all_streams_micro_engine(
+            file_path=file_path,
+            title=title,
+            description=description,
+            price=price,
+        )
     except Exception as e:
         return {"status": "error", "msg": str(e)}
 
+    filename = os.path.basename(file_path)
+
+    return {
+        "status": "success",
+        "product": title,
+        "download_url": f"/api/factory/download/{filename}",
+    }
+
+
+# -----------------------------
+# DOWNLOAD ENDPOINT
+# -----------------------------
 
 @app.get("/api/factory/download/{filename}")
 def download_file(filename: str):
@@ -47,7 +72,7 @@ def download_file(filename: str):
         raise HTTPException(status_code=404, detail="File not found")
 
     return FileResponse(
-        file_path,
+        path=file_path,
         filename=filename,
-        media_type="application/zip",
+        media_type="application/octet-stream",
     )
