@@ -2,10 +2,6 @@
 
 echo "🚀 Starting JRAVIS API"
 
-set -a
-source .env
-set +a
-
 export PYTHONPATH="$PWD:$PWD/src/src"
 
 cd src/src

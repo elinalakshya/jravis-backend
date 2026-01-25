@@ -1,101 +1,59 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI
 import os
-import requests
+
+# JRAVIS engines
+from product_factory import generate_product
+from unified_engine import run_all_streams_micro_engine
 
 app = FastAPI()
 
+
 # -----------------------------
-# HEALTH ROUTES (RENDER NEEDS)
+# HEALTH
 # -----------------------------
 
 @app.get("/")
 def root():
-    return {"status": "JRAVIS API running"}
+    return {"status": "JRAVIS running"}
 
 @app.get("/healthz")
-def healthz():
+def health():
     return {"status": "ok"}
 
-# -----------------------------
-# CONFIG
-# -----------------------------
-
-GUMROAD_TOKEN = os.getenv("GUMROAD_TOKEN")
-
-if not GUMROAD_TOKEN:
-    print("⚠️ WARNING: GUMROAD_TOKEN not set in environment variables")
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PRODUCT_FOLDER = os.path.join(BASE_DIR, "data", "products")
 
 # -----------------------------
-# MODELS
+# FACTORY + AUTO PUBLISH
 # -----------------------------
 
-class GumroadProduct(BaseModel):
-    title: str
-    price: float   # in INR (e.g. 199)
-    description: str
-    filename: str  # only file name, not full path
+@app.post("/api/factory/generate")
+def factory_generate_and_publish():
+    try:
+        print("🔥 FACTORY API TRIGGERED")
 
-# -----------------------------
-# OPTIONAL MANUAL GUMROAD API
-# -----------------------------
+        product = generate_product()
 
-@app.post("/api/gumroad/publish")
-def publish_to_gumroad(product: GumroadProduct):
+        if not product:
+            return {"status": "error", "msg": "No product generated"}
 
-    if not GUMROAD_TOKEN:
-        raise HTTPException(status_code=500, detail="GUMROAD_TOKEN missing")
+        if "file_path" not in product or "title" not in product:
+            return {"status": "error", "msg": "Invalid product structure", "product": product}
 
-    file_path = os.path.join(PRODUCT_FOLDER, product.filename)
+        print("📦 PRODUCT TITLE:", product["title"])
+        print("📄 PRODUCT FILE :", product["file_path"])
 
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail=f"File not found: {product.filename}")
+        result = run_all_streams_micro_engine(
+            zip_path=product["file_path"],
+            template_name=product["title"],
+            backend_url="api",
+        )
 
-    # 1. CREATE PRODUCT
-    create_url = "https://api.gumroad.com/v2/products"
+        return {
+            "status": "success",
+            "product": product["title"],
+            "publish_result": result,
+        }
 
-    create_data = {
-        "access_token": GUMROAD_TOKEN,
-        "name": product.title,
-        "price": int(product.price * 100),
-        "description": product.description
-    }
+    except Exception as e:
+        print("❌ FACTORY ERROR:", e)
+        return {"status": "error", "msg": str(e)}
 
-    r = requests.post(create_url, data=create_data).json()
-
-    if not r.get("success"):
-        raise HTTPException(status_code=400, detail={"step": "create", "response": r})
-
-    gumroad_product_id = r["product"]["id"]
-    gumroad_url = r["product"]["short_url"]
-
-    # 2. UPLOAD FILE
-    upload_url = f"https://api.gumroad.com/v2/products/{gumroad_product_id}/files"
-
-    with open(file_path, "rb") as f:
-        files = {"file": f}
-        upload_data = {"access_token": GUMROAD_TOKEN}
-        u = requests.post(upload_url, files=files, data=upload_data).json()
-
-    if not u.get("success"):
-        raise HTTPException(status_code=400, detail={"step": "upload", "response": u})
-
-    # 3. PUBLISH
-    publish_url = f"https://api.gumroad.com/v2/products/{gumroad_product_id}"
-
-    p = requests.put(publish_url, data={
-        "access_token": GUMROAD_TOKEN,
-        "published": True
-    }).json()
-
-    if not p.get("success"):
-        raise HTTPException(status_code=400, detail={"step": "publish", "response": p})
-
-    return {
-        "status": "published",
-        "product_id": gumroad_product_id,
-        "url": gumroad_url
-    }
