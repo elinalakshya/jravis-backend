@@ -1,5 +1,3 @@
-def run_publishers(file_path, title, description, price):
-    print("💼 RUNNING PUBLISHERS (DRAFT ONLY MODE)")
-    # No auto publish — manual upload flow
+def run_publishers(*args, **kwargs):
+    print("⚠️ Publishing disabled (manual upload mode)")
     return {}
-
