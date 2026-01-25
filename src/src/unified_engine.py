@@ -1,31 +1,30 @@
 from publishing_engine import run_publishers
+import os
+import traceback
 
+def run_all_streams_micro_engine(file_path: str, title: str, price: int):
+    print("🚀 UNIFIED ENGINE STARTED")
+    print(f"📦 FILE PATH : {file_path}")
+    print(f"🧩 TITLE     : {title}")
+    print(f"💰 PRICE     : {price}")
 
-def run_all_streams_micro_engine(product: dict, backend_url="api"):
+    if not file_path or not os.path.isfile(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
     try:
-        title = product["title"]
-        description = product["description"]
-        price = product["price"]
-        zip_path = product["zip_path"]
-
-        print("🚀 UNIFIED ENGINE STARTED")
-        print("📦 ZIP PATH      :", zip_path)
-        print("🧩 TEMPLATE NAME :", title)
-        print("🌐 BACKEND URL   :", backend_url)
         print("📤 STARTING PUBLISHING PIPELINE")
 
         results = run_publishers(
             title=title,
-            description=description,
             price=price,
-            zip_path=zip_path,
+            file_path=file_path
         )
 
-        print("🏁 PUBLISHING FINISHED")
+        print("✅ PUBLISHING COMPLETED")
         print("📊 RESULTS:", results)
-
         return results
 
-    except Exception as e:
+    except Exception:
         print("❌ UNIFIED ENGINE FAILED")
-        raise e
+        traceback.print_exc()
+        raise
