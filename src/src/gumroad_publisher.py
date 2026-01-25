@@ -3,6 +3,11 @@ import requests
 
 GUMROAD_TOKEN = os.getenv("GUMROAD_TOKEN")
 
+HEADERS = {
+    "User-Agent": "JRAVIS-BOT/1.0",
+    "Accept": "application/json",
+}
+
 
 def publish_to_gumroad(title, description, price, file_path):
     if not GUMROAD_TOKEN:
@@ -18,12 +23,12 @@ def publish_to_gumroad(title, description, price, file_path):
     data = {
         "access_token": GUMROAD_TOKEN,
         "name": title,
-        "price": int(price),          # Gumroad expects major currency, not paise
+        "price": int(price),
         "description": description,
         "published": "true",
     }
 
-    r = requests.post(create_url, data=data, timeout=60)
+    r = requests.post(create_url, data=data, headers=HEADERS, timeout=60)
 
     print("🟢 Create status:", r.status_code)
     print("🟢 Create text:", r.text[:300])
@@ -48,7 +53,7 @@ def publish_to_gumroad(title, description, price, file_path):
     with open(file_path, "rb") as f:
         files = {"file": f}
         data = {"access_token": GUMROAD_TOKEN}
-        up = requests.post(upload_url, data=data, files=files, timeout=120)
+        up = requests.post(upload_url, data=data, files=files, headers=HEADERS, timeout=120)
 
     print("🟢 Upload status:", up.status_code)
     print("🟢 Upload text:", up.text[:300])
@@ -60,7 +65,6 @@ def publish_to_gumroad(title, description, price, file_path):
     if not upj.get("success"):
         raise Exception(f"❌ Gumroad upload failed: {upj}")
 
-    print("✅ FILE ATTACHED TO PRODUCT")
+    print("✅ FILE ATTACHED")
 
     return product_url
-
