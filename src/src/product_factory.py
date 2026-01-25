@@ -30,9 +30,8 @@ def generate_product() -> Dict:
 
     print("📄 TXT PRODUCT CREATED:", path)
 
-    return {
-        "title": title,
-        "description": description,
-        "price": price,
-        "zip_path": path,
-    }
+   return {
+    "file_path": file_path,
+    "title": title,
+    "price": price
+}
