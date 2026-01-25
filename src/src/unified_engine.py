@@ -1,20 +1,20 @@
-from publishing_engine import run_publishers
+# src/src/unified_engine.py
 
+def run_all_streams_micro_engine(file_path, title, description, price):
+    """
+    Draft-only mode.
+    No publishing. Only return file info for manual upload.
+    """
 
-def run_all_streams_micro_engine(title, description, price, zip_path):
-    print("🚀 UNIFIED ENGINE STARTED")
-    print("📦 FILE PATH :", zip_path)
+    print("🚀 UNIFIED ENGINE STARTED (DRAFT MODE)")
+    print("📦 FILE PATH :", file_path)
     print("🧩 TITLE     :", title)
     print("💰 PRICE     :", price)
 
-    print("📤 STARTING PUBLISHING PIPELINE")
+    return {
+        "file_path": file_path,
+        "title": title,
+        "price": price,
+        "status": "draft_ready",
+    }
 
-    results = run_publishers(
-        title=title,
-        description=description,
-        price=price,
-        zip_path=zip_path,
-    )
-
-    print("🏁 PUBLISHING FINISHED")
-    return results
