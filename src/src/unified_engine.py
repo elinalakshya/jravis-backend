@@ -7,10 +7,9 @@ from publishing_engine import run_publishers
 
 def run_all_streams_micro_engine(*, title, description, price, zip_path, backend_url="api"):
     print("🚀 UNIFIED ENGINE STARTED")
-    print(f"📦 FILE PATH     : {zip_path}")
-    print(f"🧩 TITLE         : {title}")
-    print(f"💰 PRICE         : {price}")
-    print(f"🌐 BACKEND URL   : {backend_url}")
+    print(f"📦 FILE PATH : {zip_path}")
+    print(f"🧩 TITLE     : {title}")
+    print(f"💰 PRICE     : {price}")
 
     if not os.path.isfile(zip_path):
         raise FileNotFoundError(f"File not found: {zip_path}")
@@ -20,7 +19,7 @@ def run_all_streams_micro_engine(*, title, description, price, zip_path, backend
 
         results = run_publishers(
             title=title,
-            description=description,
+            description=description,   # ✅ PASSING
             price=price,
             zip_path=zip_path,
         )
