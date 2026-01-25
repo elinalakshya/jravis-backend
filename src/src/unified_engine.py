@@ -35,6 +35,7 @@ def run_all_streams_micro_engine(
         results = run_publishers(
             title=title,
             description=description,
+            price=price,
             zip_path=zip_path,
         )
 
