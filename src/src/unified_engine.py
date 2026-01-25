@@ -27,6 +27,7 @@ def run_all_streams_micro_engine(file_path, title, description, price):
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     return {
         "file_path": file_path,
         "title": title,
@@ -45,6 +46,9 @@ def run_all_streams_micro_engine(file_path, title, description, price):
     if price is None:
         raise Exception("Missing price")
 =======
+=======
+    print("📤 STARTING PUBLISHING PIPELINE")
+>>>>>>> b65d2aec846f5aea4adba7f697bfc93c77fbd4c8
     results = run_publishers(
         file_path=file_path,
         title=title,

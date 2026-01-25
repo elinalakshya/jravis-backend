@@ -37,6 +37,7 @@ def health():
 >>>>>>> 841ae53c3b0e30b8e1e18baaa1e1dd945f7b46c0
 @app.post("/api/factory/generate")
 def factory_generate():
+<<<<<<< HEAD
     print("🔥 FACTORY API TRIGGERED")
 
     product = generate_product()
@@ -92,3 +93,26 @@ def download_file(filename: str):
 >>>>>>> 1f57279cb1e2a7d049ea5ef7a4b8c6cf7fd106fa
 =======
 >>>>>>> 841ae53c3b0e30b8e1e18baaa1e1dd945f7b46c0
+=======
+    try:
+        print("🔥 FACTORY API TRIGGERED")
+
+        product = generate_product()
+
+        run_all_streams_micro_engine(
+            file_path=product["file_path"],
+            title=product["title"],
+            description=product["description"],
+            price=product["price"],
+        )
+
+        return {
+            "status": "success",
+            "product": product["title"],
+            "download_path": product["file_path"],
+        }
+
+    except Exception as e:
+        print("❌ FACTORY ERROR:", e)
+        return {"status": "error", "msg": str(e)}
+>>>>>>> b65d2aec846f5aea4adba7f697bfc93c77fbd4c8

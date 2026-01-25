@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 def run_publishers(file_path, title, description, price):
     print("📤 STARTING PUBLISHING PIPELINE (DRAFT MODE)")
     print("📦 FILE:", file_path)
@@ -20,3 +21,8 @@ def run_publishers(*args, **kwargs):
         "download_path": file_path
     }
 >>>>>>> 841ae53c3b0e30b8e1e18baaa1e1dd945f7b46c0
+=======
+def run_publishers(**kwargs):
+    print("📝 DRAFT MODE — no auto publishing")
+    return {}
+>>>>>>> b65d2aec846f5aea4adba7f697bfc93c77fbd4c8
