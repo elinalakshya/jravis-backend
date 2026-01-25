@@ -1,7 +1,10 @@
+# src/src/publishing_engine.py
+
 from gumroad_publisher import publish_to_gumroad
 
-def run_publishers(title: str, price: int, file_path: str):
-    print("💼 RUNNING PUBLISHERS (GUMROAD MODE)")
+
+def run_publishers(title, description, price, zip_path):
+    print("💼 RUNNING PUBLISHERS (GUMROAD AUTO MODE)")
 
     results = {}
 
@@ -9,12 +12,15 @@ def run_publishers(title: str, price: int, file_path: str):
         print("🟠 Publishing to Gumroad...")
         url = publish_to_gumroad(
             title=title,
+            description=description,
             price=price,
-            file_path=file_path
+            file_path=zip_path,
         )
         results["gumroad"] = url
+
     except Exception as e:
         print("❌ Gumroad FAILED:", e)
         results["gumroad"] = None
 
+    print("🏁 PUBLISHING FINISHED")
     return results
