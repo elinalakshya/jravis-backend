@@ -52,9 +52,9 @@ def generate_product():
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
         z.write(pdf_path, arcname=pdf_name)
 
-    return {
-        "title": title,
-        "description": description,
-        "price": price,
-        "zip_path": zip_name,   # only filename for download route
-    }
+  return {
+    "title": title,
+    "price": price,
+    "zip_path": zip_filename
+}
+
