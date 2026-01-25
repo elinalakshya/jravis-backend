@@ -1,9 +1,7 @@
 import os
 import uuid
-import zipfile
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 
 OUTPUT_DIR = "factory_output"
@@ -11,10 +9,14 @@ OUTPUT_DIR = "factory_output"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "..", "..", "factory_output")
 >>>>>>> 1f57279cb1e2a7d049ea5ef7a4b8c6cf7fd106fa
+=======
+OUTPUT_DIR = "factory_output"
+>>>>>>> 841ae53c3b0e30b8e1e18baaa1e1dd945f7b46c0
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 def generate_product():
+<<<<<<< HEAD
 <<<<<<< HEAD
     """
     Generates a simple TXT product for now.
@@ -26,7 +28,11 @@ def generate_product():
 =======
 >>>>>>> 1f57279cb1e2a7d049ea5ef7a4b8c6cf7fd106fa
     title = "Morning Routine Planner – Printable Productivity Toolkit"
+=======
+    uid = uuid.uuid4().hex[:8]
+>>>>>>> 841ae53c3b0e30b8e1e18baaa1e1dd945f7b46c0
 
+    title = "Morning Routine Planner – Printable Productivity Toolkit"
     description = (
         "Morning Routine Planner designed to help users stay consistent,\n"
         "organized, and achieve measurable improvement.\n\n"
@@ -36,9 +42,9 @@ def generate_product():
         "- Reflection notes\n\n"
         "Stay consistent. Stay focused."
     )
-
     price = 149
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     file_name = f"planner_{product_id}.txt"
     file_path = os.path.join(OUTPUT_DIR, file_name)
@@ -90,13 +96,17 @@ Daily Sections:
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
         z.write(pdf_path, arcname=pdf_name)
 >>>>>>> 1f57279cb1e2a7d049ea5ef7a4b8c6cf7fd106fa
+=======
+    filename = f"planner_{uid}.txt"
+    file_path = os.path.join(OUTPUT_DIR, filename)
 
-  return {
-    "title": title,
-    "price": price,
-    "zip_path": zip_filename
-}
+    with open(file_path, "w") as f:
+        f.write(title + "\n\n" + description)
+>>>>>>> 841ae53c3b0e30b8e1e18baaa1e1dd945f7b46c0
 
+    print("📄 TXT PRODUCT CREATED:", file_path)
+
+<<<<<<< HEAD
 <<<<<<< HEAD
     return {
         "file_path": file_path,
@@ -107,3 +117,11 @@ Daily Sections:
 
 =======
 >>>>>>> 1f57279cb1e2a7d049ea5ef7a4b8c6cf7fd106fa
+=======
+    return {
+        "title": title,
+        "description": description,
+        "price": price,
+        "file_path": file_path,
+    }
+>>>>>>> 841ae53c3b0e30b8e1e18baaa1e1dd945f7b46c0

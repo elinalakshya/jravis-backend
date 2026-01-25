@@ -1,5 +1,6 @@
-# src/src/unified_engine.py
+from publishing_engine import run_publishers
 
+<<<<<<< HEAD
 def run_all_streams_micro_engine(file_path, title, description, price):
     """
 <<<<<<< HEAD
@@ -14,14 +15,17 @@ def run_all_streams_micro_engine(file_path, title, description, price):
     This engine only validates and prepares response.
     No auto publishing is done here.
     """
+=======
+>>>>>>> 841ae53c3b0e30b8e1e18baaa1e1dd945f7b46c0
 
+def run_all_streams_micro_engine(file_path, title, description, price):
     print("🚀 UNIFIED ENGINE STARTED")
 >>>>>>> 1f57279cb1e2a7d049ea5ef7a4b8c6cf7fd106fa
     print("📦 FILE PATH :", file_path)
     print("🧩 TITLE     :", title)
-    print("📝 DESC LEN  :", len(description) if description else 0)
     print("💰 PRICE     :", price)
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     return {
         "file_path": file_path,
@@ -40,10 +44,19 @@ def run_all_streams_micro_engine(file_path, title, description, price):
 
     if price is None:
         raise Exception("Missing price")
+=======
+    results = run_publishers(
+        file_path=file_path,
+        title=title,
+        description=description,
+        price=price,
+    )
+>>>>>>> 841ae53c3b0e30b8e1e18baaa1e1dd945f7b46c0
 
-    print("✅ PRODUCT READY FOR MANUAL UPLOAD")
-    print("📤 NEXT STEP: USER DOWNLOADS ZIP AND UPLOADS TO PAYHIP")
+    print("✅ PUBLISHING COMPLETED")
+    print("📊 RESULTS:", results)
 
+<<<<<<< HEAD
     return {
         "status": "ready",
         "file_path": file_path,
@@ -51,3 +64,6 @@ def run_all_streams_micro_engine(file_path, title, description, price):
         "price": price,
     }
 >>>>>>> 1f57279cb1e2a7d049ea5ef7a4b8c6cf7fd106fa
+=======
+    return results
+>>>>>>> 841ae53c3b0e30b8e1e18baaa1e1dd945f7b46c0
