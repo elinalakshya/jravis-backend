@@ -4,7 +4,7 @@ from gumroad_publisher import publish_to_gumroad
 
 
 def run_publishers(title, description, price, zip_path):
-    print("💼 RUNNING PUBLISHERS (GUMROAD AUTO MODE)")
+    print("💼 RUNNING PUBLISHERS (GUMROAD MODE)")
 
     results = {}
 
@@ -12,7 +12,7 @@ def run_publishers(title, description, price, zip_path):
         print("🟠 Publishing to Gumroad...")
         url = publish_to_gumroad(
             title=title,
-            description=description,
+            description=description,   # ✅ FIXED
             price=price,
             file_path=zip_path,
         )
