@@ -22,42 +22,33 @@ def health():
 # -----------------------------
 # FACTORY → PUBLISH PIPELINE
 # -----------------------------
+from unified_engine import run_all_streams_micro_engine
 
 @app.post("/api/factory/generate")
-def factory_generate_and_publish():
+def factory_generate():
+
+    product = generate_product()
+
     try:
-        print("🔥 FACTORY API TRIGGERED")
-
-        product = generate_product()
-
-        if not product:
-            return {"status": "error", "msg": "No product generated"}
-
-        # 🔧 ADAPTER (factory → engine)
-        file_path = product.get("zip_path") or product.get("file_path")
-        title = product.get("name") or product.get("title")
-
-        if not file_path or not title:
-            return {
-                "status": "error",
-                "msg": "Invalid product structure",
-                "product": product,
-            }
-
-        print("📦 PRODUCT TITLE:", title)
-        print("📄 PRODUCT FILE :", file_path)
-
         result = run_all_streams_micro_engine(
-            zip_path=file_path,
-            template_name=title,
-            backend_url="api",
+            file_path=product["file_path"],
+            title=product["title"],
+            price=product["price"]
         )
 
         return {
             "status": "success",
-            "product": title,
-            "publish_result": result,
+            "product": product["title"],
+            "publish_result": result
         }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "msg": str(e),
+            "product": product
+        }
+
 
     except Exception as e:
         print("❌ FACTORY ERROR:", e)
