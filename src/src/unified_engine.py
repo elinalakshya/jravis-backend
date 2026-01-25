@@ -2,17 +2,14 @@
 import os
 import traceback
 
-
-def run_all_streams_micro_engine(
-    file_path: str,
-    title: str,
-    description: str,
-    price: int,
-):
+def run_all_streams_micro_engine(file_path, title, description, price):
     print("🚀 UNIFIED ENGINE STARTED")
     print("📦 FILE PATH :", file_path)
     print("🧩 TITLE     :", title)
     print("💰 PRICE     :", price)
+    print("📤 MANUAL MODE — NO AUTO PUBLISH")
+
+    return {"status": "ready"}
 
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
