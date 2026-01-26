@@ -1,0 +1,44 @@
+{
+  "id": "product_001",
+  "title": "Daily Energy Protection Planner",
+  "price_inr": 399,
+  "category": "productivity",
+  "file_path": "data/assets/product_001/planner.pdf",
+
+  "gumroad": {
+    "title": "Daily Energy Protection Planner – Stop Burnout & Stay Focused",
+    "description": "A simple daily system to protect your energy and finish what matters."
+  },
+
+  "etsy": {
+    "title": "Daily Energy Protection Planner Printable | Focus Productivity Worksheet",
+    "tags": [
+      "energy planner",
+      "productivity printable",
+      "focus worksheet",
+      "burnout recovery",
+      "daily planner pdf",
+      "self improvement tool",
+      "student planner",
+      "work focus sheet",
+      "mental clarity planner",
+      "habit tracking pdf",
+      "goal planning printable",
+      "minimalist planner",
+      "digital planner download"
+    ],
+    "description": "Printable daily planner to protect focus and avoid burnout..."
+  },
+
+  "printify": {
+    "product_type": "poster",
+    "title": "Protect Your Energy Poster",
+    "design_text": "PROTECT YOUR ENERGY\nWhat you allow today decides your success tomorrow."
+  },
+
+  "webflow": {
+    "slug": "daily-energy-protection-planner",
+    "headline": "Protect Your Energy. Multiply Your Results.",
+    "body": "Most people fail not because they lack skill..."
+  }
+}
