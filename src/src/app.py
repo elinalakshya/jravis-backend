@@ -1,41 +1,39 @@
-from fastapi import FastAPI, Query
-from fastapi.responses import FileResponse
-from unified_engine import run_draft_engine
-from draft_store import load_drafts
-import os
+from fastapi import FastAPI, Depends
 
-from fastapi import FastAPI
+from unified_engine import run_all_streams_micro_engine
 from services.api.publish import router as publish_router
-app = FastAPI()
-app.include_router(publish_router)
-@app.get("/healthz")
-def health():
-    return {"status": "ok"}
 
+app = FastAPI()
+
+
+# -------------------------
+# ROUTERS
+# -------------------------
+app.include_router(publish_router)
+
+
+# -------------------------
+# BASIC ROUTES
+# -------------------------
 
 @app.get("/")
-def home():
+def root():
     return {"status": "JRAVIS API running"}
 
 
-@app.post("/api/draft/generate")
-def generate_draft(niche: str = Query("general")):
-    entry = run_draft_engine(niche)
-    return {
-        "status": "success",
-        "product": entry["title"],
-        "niche": niche,
-        "download_zip": entry["zip"]
-    }
+@app.get("/healthz")
+def health():
+    return {"ok": True}
 
 
-@app.get("/api/drafts")
-def list_drafts():
-    return load_drafts()
+# -------------------------
+# FACTORY ENGINE
+# -------------------------
 
-
-@app.get("/download/{path:path}")
-def download(path: str):
-    if not os.path.exists(path):
-        return {"error": "file not found"}
-    return FileResponse(path, filename=os.path.basename(path))
+@app.post("/api/factory/generate")
+def generate():
+    try:
+        result = run_all_streams_micro_engine()
+        return {"status": "success", **result}
+    except Exception as e:
+        return {"status": "error", "msg": str(e)}
