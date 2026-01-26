@@ -1,0 +1,10 @@
+{
+  "id": "pod_002",
+  "title": "Discipline Beats Motivation Poster",
+  "description": "Minimal motivational wall art for gym and study rooms.",
+  "blueprint_id": 122,
+  "print_provider_id": 1,
+  "design_image": "data/assets/pod_002/design.png",
+  "variants": [13028, 13029],
+  "price": 499
+}
