@@ -88,3 +88,52 @@ def draft_pod(product_id: str):
         "printify_product_id": prod_id
     }
 
+import os
+from services.printify_service import upload_image, create_product
+
+
+@router.post("/api/publish/batch_pod")
+def batch_pod_upload():
+
+    base = "data/listings_pod"
+    results = []
+
+    for fname in os.listdir(base):
+        if not fname.endswith(".json"):
+            continue
+
+        path = os.path.join(base, fname)
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                p = json.load(f)
+
+            image_id = upload_image(p["design_image"])
+
+            prod_id = create_product(
+                p["title"],
+                p["description"],
+                p["blueprint_id"],
+                p["print_provider_id"],
+                image_id,
+                p["variants"],
+                p["price"]
+            )
+
+            results.append({
+                "file": fname,
+                "status": "success",
+                "printify_product_id": prod_id
+            })
+
+        except Exception as e:
+            results.append({
+                "file": fname,
+                "status": "failed",
+                "error": str(e)
+            })
+
+    return {
+        "uploaded": len(results),
+        "results": results
+    }
