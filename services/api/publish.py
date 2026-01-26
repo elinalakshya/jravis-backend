@@ -1,65 +1,17 @@
+import os
 import json
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
-from fastapi import Depends
-from services.security import verify_lock_code
-from services.gumroad_service import create_product, upload_file
-from services.etsy_service import create_draft_listing
-from services.printify_service import create_product as create_printify_product
-from services.webflow_service import create_draft_item
-
-router = APIRouter()
-
-
-def load_listing(product_id):
-    path = f"data/listings/{product_id}.json"
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        raise HTTPException(status_code=404, detail="Listing JSON not found")
-
-
-@router.post("/api/publish/draft_all/{product_id}")
-def draft_all(product_id: str):
-
-    listing = load_listing(product_id)
-
-    # ---- GUMROAD ----
-    gum_id = create_product(
-        listing["gumroad"]["title"],
-        listing["price_inr"],
-        listing["gumroad"]["description"]
-    )
-    upload_file(gum_id, listing["file_path"])
-
-    # ---- ETSY ----
-    create_draft_listing(
-        listing["etsy"]["title"],
-        listing["etsy"]["description"],
-        listing["etsy"]["tags"]
-    )
-
-    # ---- PRINTIFY ----
-    create_printify_product(listing["printify"]["title"])
-
-    # ---- WEBFLOW ----
-    create_draft_item(
-        listing["webflow"]["slug"],
-        listing["title"],
-        listing["webflow"]["body"]
-    )
-
-    return {"status": "draft_created_on_all_platforms"}
-
-import json
-from fastapi import APIRouter, HTTPException
 from services.printify_service import upload_image, create_product
+from services.security import verify_lock_code
 
 router = APIRouter()
 
+# -----------------------------
+# Helpers
+# -----------------------------
 
-def load_pod(product_id):
+def load_pod(product_id: str):
     path = f"data/listings_pod/{product_id}.json"
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -68,7 +20,14 @@ def load_pod(product_id):
         raise HTTPException(status_code=404, detail="POD JSON not found")
 
 
-@router.post("/api/publish/draft_pod/{product_id}")
+# -----------------------------
+# SINGLE POD DRAFT
+# -----------------------------
+
+@router.post(
+    "/api/publish/draft_pod/{product_id}",
+    dependencies=[Depends(verify_lock_code)]
+)
 def draft_pod(product_id: str):
 
     p = load_pod(product_id)
@@ -76,29 +35,37 @@ def draft_pod(product_id: str):
     image_id = upload_image(p["design_image"])
 
     prod_id = create_product(
-        p["title"],
-        p["description"],
-        p["blueprint_id"],
-        p["print_provider_id"],
-        image_id,
-        p["variants"],
-        p["price"]
+        title=p["title"],
+        description=p["description"],
+        blueprint_id=p["blueprint_id"],
+        provider_id=p["print_provider_id"],
+        image_id=image_id,
+        variants=p["variants"],
+        price=p["price"]
     )
 
     return {
         "status": "draft_created",
-        "printify_product_id": prod_id
+        "printify_product_id": prod_id,
+        "product_id": product_id
     }
 
-import os
-from services.printify_service import upload_image, create_product
 
+# -----------------------------
+# BATCH POD UPLOADER
+# -----------------------------
 
-@router.post("/api/publish/batch_pod")
+@router.post(
+    "/api/publish/batch_pod",
+    dependencies=[Depends(verify_lock_code)]
+)
 def batch_pod_upload():
 
     base = "data/listings_pod"
     results = []
+
+    if not os.path.exists(base):
+        raise HTTPException(status_code=500, detail="listings_pod folder missing")
 
     for fname in os.listdir(base):
         if not fname.endswith(".json"):
@@ -113,13 +80,13 @@ def batch_pod_upload():
             image_id = upload_image(p["design_image"])
 
             prod_id = create_product(
-                p["title"],
-                p["description"],
-                p["blueprint_id"],
-                p["print_provider_id"],
-                image_id,
-                p["variants"],
-                p["price"]
+                title=p["title"],
+                description=p["description"],
+                blueprint_id=p["blueprint_id"],
+                provider_id=p["print_provider_id"],
+                image_id=image_id,
+                variants=p["variants"],
+                price=p["price"]
             )
 
             results.append({
@@ -136,6 +103,6 @@ def batch_pod_upload():
             })
 
     return {
-        "uploaded": len(results),
+        "total": len(results),
         "results": results
     }
