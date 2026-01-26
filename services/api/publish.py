@@ -7,9 +7,6 @@ from services.security import verify_lock_code
 
 router = APIRouter()
 
-# -----------------------------
-# Helpers
-# -----------------------------
 
 def load_pod(product_id: str):
     path = f"data/listings_pod/{product_id}.json"
@@ -19,10 +16,6 @@ def load_pod(product_id: str):
     except Exception:
         raise HTTPException(status_code=404, detail="POD JSON not found")
 
-
-# -----------------------------
-# SINGLE POD DRAFT
-# -----------------------------
 
 @router.post(
     "/api/publish/draft_pod/{product_id}",
@@ -50,10 +43,6 @@ def draft_pod(product_id: str):
         "product_id": product_id
     }
 
-
-# -----------------------------
-# BATCH POD UPLOADER
-# -----------------------------
 
 @router.post(
     "/api/publish/batch_pod",
