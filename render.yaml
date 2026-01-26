@@ -3,7 +3,7 @@ services:
     name: jravis-api
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: bash -c "export PYTHONPATH=. && cd src/src && uvicorn app:app --host 0.0.0.0 --port $PORT"
+    startCommand: bash -c "export PYTHONPATH=. && uvicorn main:app --host 0.0.0.0 --port $PORT"
 
   - type: worker
     name: jravis-worker
