@@ -1,10 +1,10 @@
-from fastapi import FastAPI, Depends
-
+from fastapi import FastAPI
 from unified_engine import run_all_streams_micro_engine
 from services.api.publish import router as publish_router
 
 app = FastAPI()
 
+app.include_router(publish_router)
 
 # -------------------------
 # ROUTERS
