@@ -4,7 +4,13 @@ from unified_engine import run_draft_engine
 from draft_store import load_drafts
 import os
 
+from fastapi import FastAPI
+from services.api.publish import router as publish_router
 app = FastAPI()
+app.include_router(publish_router)
+@app.get("/healthz")
+def health():
+    return {"status": "ok"}
 
 
 @app.get("/")
