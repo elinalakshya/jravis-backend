@@ -2,8 +2,8 @@ import os
 import json
 from fastapi import APIRouter, HTTPException, Depends
 
-from services.printify_service import upload_image, create_product
-from services.security import verify_lock_code
+from jravis_backend.services.printify_service import upload_image, create_product
+from jravis_backend.services.security import verify_lock_code
 
 router = APIRouter()
 
