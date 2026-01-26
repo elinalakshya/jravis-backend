@@ -1,23 +1,35 @@
-from fastapi import FastAPI
-from unified_engine import run_all_streams_micro_engine
+from fastapi import FastAPI, Query
+from fastapi.responses import FileResponse
+from unified_engine import run_draft_engine
+from draft_store import load_drafts
+import os
 
 app = FastAPI()
 
 
 @app.get("/")
-def root():
+def home():
     return {"status": "JRAVIS API running"}
 
 
-@app.get("/healthz")
-def health():
-    return {"ok": True}
+@app.post("/api/draft/generate")
+def generate_draft(niche: str = Query("general")):
+    entry = run_draft_engine(niche)
+    return {
+        "status": "success",
+        "product": entry["title"],
+        "niche": niche,
+        "download_zip": entry["zip"]
+    }
 
 
-@app.post("/api/factory/generate")
-def generate():
-    try:
-        result = run_all_streams_micro_engine()
-        return {"status": "success", **result}
-    except Exception as e:
-        return {"status": "error", "msg": str(e)}
+@app.get("/api/drafts")
+def list_drafts():
+    return load_drafts()
+
+
+@app.get("/download/{path:path}")
+def download(path: str):
+    if not os.path.exists(path):
+        return {"error": "file not found"}
+    return FileResponse(path, filename=os.path.basename(path))
