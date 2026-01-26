@@ -1,6 +1,8 @@
 import json
 from fastapi import APIRouter, HTTPException
 
+from fastapi import Depends
+from services.security import verify_lock_code
 from services.gumroad_service import create_product, upload_file
 from services.etsy_service import create_draft_listing
 from services.printify_service import create_product as create_printify_product
