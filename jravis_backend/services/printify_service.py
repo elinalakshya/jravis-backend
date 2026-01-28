@@ -1,86 +1,60 @@
-
 import os
 import requests
 
 PRINTIFY_API_KEY = os.getenv("PRINTIFY_API_KEY")
 
-BASE = "https://api.printify.com/v1"
 
-HEADERS = {
-    "Authorization": f"Bearer {PRINTIFY_API_KEY}",
-    "Content-Type": "application/json"
-}
-
-
-def upload_image(image_path: str) -> str:
-
+def _headers():
     if not PRINTIFY_API_KEY:
-        raise Exception("PRINTIFY_API_KEY not set")
-
-    files = {
-        "file": open(image_path, "rb")
+        raise Exception("PRINTIFY_API_KEY not set in environment")
+    return {
+        "Authorization": f"Bearer {PRINTIFY_API_KEY}",
     }
 
-    r = requests.post(
-        f"{BASE}/uploads/images.json",
-        headers={"Authorization": f"Bearer {PRINTIFY_API_KEY}"},
-        files=files
-    )
 
-    r.raise_for_status()
+# -------------------------------
+# Upload image to Printify
+# -------------------------------
+def upload_image(image_path: str) -> str:
+    if not os.path.exists(image_path):
+        raise Exception(f"Design image not found: {image_path}")
 
-    return r.json()["id"]
+    url = "https://api.printify.com/v1/uploads/images.json"
+
+    with open(image_path, "rb") as f:
+        files = {
+            "file": f,
+        }
+
+        r = requests.post(
+            url,
+            headers=_headers(),
+            files=files,
+            timeout=60,
+        )
+
+    if r.status_code not in (200, 201):
+        raise Exception(f"Printify image upload failed: {r.status_code} {r.text}")
+
+    data = r.json()
+    return data["id"]
 
 
-def create_product(title, description, blueprint_id, provider_id, image_id, variants, price):
-
-    shop_id = get_shop_id()
-
-    payload = {
-        "title": title,
-        "description": description,
-        "blueprint_id": blueprint_id,
-        "print_provider_id": provider_id,
-        "variants": variants,
-        "print_areas": [
-            {
-                "variant_ids": [v["id"] for v in variants],
-                "placeholders": [
-                    {
-                        "position": "front",
-                        "images": [
-                            {
-                                "id": image_id,
-                                "x": 0.5,
-                                "y": 0.5,
-                                "scale": 1,
-                                "angle": 0
-                            }
-                        ]
-                    }
-                ]
-            }
-        ]
-    }
+# -------------------------------
+# Create product draft
+# -------------------------------
+def create_product_draft(shop_id: str, payload: dict) -> dict:
+    url = f"https://api.printify.com/v1/shops/{shop_id}/products.json"
 
     r = requests.post(
-        f"{BASE}/shops/{shop_id}/products.json",
-        headers=HEADERS,
-        json=payload
+        url,
+        headers={**_headers(), "Content-Type": "application/json"},
+        json=payload,
+        timeout=60,
     )
 
-    r.raise_for_status()
+    if r.status_code not in (200, 201):
+        raise Exception(f"Printify product create failed: {r.status_code} {r.text}")
 
-    return r.json()["id"]
+    return r.json()
 
-
-def get_shop_id():
-
-    r = requests.get(
-        f"{BASE}/shops.json",
-        headers=HEADERS
-    )
-
-    r.raise_for_status()
-
-    return r.json()[0]["id"]
