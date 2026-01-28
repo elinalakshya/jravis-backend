@@ -27,7 +27,7 @@ def draft_pod(product_id: str):
 
     image_id = upload_image(p["design_image"])
 
-    prod_id = create_product(
+    result = create_product_draft(
         title=p["title"],
         description=p["description"],
         blueprint_id=p["blueprint_id"],
@@ -37,12 +37,7 @@ def draft_pod(product_id: str):
         price=p["price"]
     )
 
-    return {
-        "status": "draft_created",
-        "printify_product_id": prod_id,
-        "product_id": product_id
-    }
-
+    return {"status": "draft_created", "product_id": result.get("id")}
 
 @router.post(
     "/api/publish/batch_pod",
