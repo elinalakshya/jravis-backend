@@ -4,7 +4,7 @@
 
 from fastapi import FastAPI
 
-# Existing factory routes
+# Existing factory routes (already in your project)
 from api.factory import router as factory_router
 
 # POD publish routes (Printify -> Etsy drafts)
