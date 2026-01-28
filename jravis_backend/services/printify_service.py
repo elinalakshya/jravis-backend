@@ -1,4 +1,5 @@
 import os
+import base64
 import requests
 
 PRINTIFY_API_KEY = os.getenv("PRINTIFY_API_KEY")
@@ -9,35 +10,38 @@ def _headers():
         raise Exception("PRINTIFY_API_KEY not set in environment")
     return {
         "Authorization": f"Bearer {PRINTIFY_API_KEY}",
+        "Content-Type": "application/json",
     }
 
 
 # -------------------------------
-# Upload image to Printify
+# Upload image to Printify (BASE64)
 # -------------------------------
 def upload_image(image_path: str) -> str:
     if not os.path.exists(image_path):
         raise Exception(f"Design image not found: {image_path}")
 
+    with open(image_path, "rb") as f:
+        encoded = base64.b64encode(f.read()).decode("utf-8")
+
+    payload = {
+        "file_name": os.path.basename(image_path),
+        "contents": encoded,
+    }
+
     url = "https://api.printify.com/v1/uploads/images.json"
 
-    with open(image_path, "rb") as f:
-        files = {
-            "file": f,
-        }
-
-        r = requests.post(
-            url,
-            headers=_headers(),
-            files=files,
-            timeout=60,
-        )
+    r = requests.post(
+        url,
+        headers=_headers(),
+        json=payload,
+        timeout=60,
+    )
 
     if r.status_code not in (200, 201):
         raise Exception(f"Printify image upload failed: {r.status_code} {r.text}")
 
-    data = r.json()
-    return data["id"]
+    return r.json()["id"]
 
 
 # -------------------------------
@@ -48,7 +52,7 @@ def create_product_draft(shop_id: str, payload: dict) -> dict:
 
     r = requests.post(
         url,
-        headers={**_headers(), "Content-Type": "application/json"},
+        headers=_headers(),
         json=payload,
         timeout=60,
     )
