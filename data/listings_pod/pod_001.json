@@ -1,0 +1,12 @@
+{
+  "title": "JRAVIS Test Hoodie – Focus Mode",
+  "description": "High quality motivational hoodie. JRAVIS auto generated draft.",
+  "blueprint_id": 6,
+  "print_provider_id": 1,
+  "price": 1999,
+  "design_image": "data/images/test_design.png",
+  "variants": [
+    {"id": 40148, "price": 1999, "is_enabled": true},
+    {"id": 40149, "price": 1999, "is_enabled": true}
+  ]
+}
