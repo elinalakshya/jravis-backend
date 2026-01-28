@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from api.factory import router as factory_router
-from jravis_backend.services.api.publish import router as publish_router
+from services.api.publish import router as publish_router
 
 app = FastAPI(title="JRAVIS Backend")
 
@@ -15,3 +15,4 @@ def health_check():
 @app.get("/")
 def root():
     return {"status": "JRAVIS API running"}
+
