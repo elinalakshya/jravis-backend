@@ -1,55 +1,47 @@
 import os
 import requests
 
-PRINTIFY_TOKEN = os.getenv("PRINTIFY_TOKEN")
-PRINTIFY_SHOP_ID = os.getenv("PRINTIFY_SHOP_ID")
+PRINTIFY_API_KEY = os.getenv("PRINTIFY_API_KEY")
+
+BASE_URL = "https://api.printify.com/v1"
 
 
 def _headers():
     return {
-        "Authorization": f"Bearer {PRINTIFY_TOKEN}",
-        "Content-Type": "application/json"
+        "Authorization": f"Bearer {PRINTIFY_API_KEY}",
     }
 
 
-def upload_image(image_path):
-    url = "https://api.printify.com/v1/uploads/images.json"
+def upload_image(image_path: str) -> str:
+    if not os.path.exists(image_path):
+        raise Exception(f"Image not found: {image_path}")
+
+    url = f"{BASE_URL}/uploads/images.json"
 
     with open(image_path, "rb") as f:
-        headers = {"Authorization": f"Bearer {PRINTIFY_TOKEN}"}
-        files = {"file": f}
-        r = requests.post(url, headers=headers, files=files, timeout=120)
-        r.raise_for_status()
-        return r.json()["id"]
+        files = {
+            "file": ("design.png", f, "image/png"),
+        }
+
+        r = requests.post(url, headers=_headers(), files=files)
+
+    if r.status_code != 200:
+        raise Exception(f"Printify upload failed {r.status_code}: {r.text}")
+
+    data = r.json()
+    return data["id"]
 
 
-def create_product(title, description, blueprint_id, provider_id, image_id, variants, price):
-    url = f"https://api.printify.com/v1/shops/{PRINTIFY_SHOP_ID}/products.json"
+def create_draft_product(payload: dict) -> dict:
+    shop_id = os.getenv("PRINTIFY_SHOP_ID")
+    if not shop_id:
+        raise Exception("PRINTIFY_SHOP_ID not set")
 
-    data = {
-        "title": title,
-        "description": description,
-        "blueprint_id": blueprint_id,
-        "print_provider_id": provider_id,
-        "variants": [
-            {"id": v, "price": price * 100, "is_enabled": True}
-            for v in variants
-        ],
-        "print_areas": [
-            {
-                "variant_ids": variants,
-                "placeholders": [
-                    {
-                        "position": "front",
-                        "images": [
-                            {"id": image_id, "x": 0.5, "y": 0.5, "scale": 1, "angle": 0}
-                        ]
-                    }
-                ]
-            }
-        ]
-    }
+    url = f"{BASE_URL}/shops/{shop_id}/products.json"
 
-    r = requests.post(url, headers=_headers(), json=data, timeout=120)
-    r.raise_for_status()
-    return r.json()["id"]
+    r = requests.post(url, headers={**_headers(), "Content-Type": "application/json"}, json=payload)
+
+    if r.status_code not in (200, 201):
+        raise Exception(f"Product create failed {r.status_code}: {r.text}")
+
+    return r.json()
