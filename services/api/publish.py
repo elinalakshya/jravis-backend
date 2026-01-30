@@ -1,92 +1,116 @@
+from fastapi import APIRouter, HTTPException, Header
 import os
 import json
-from fastapi import APIRouter, HTTPException, Depends
 
-from jravis_backend.services.printify_service import upload_image, create_product_draft
-from jravis_backend.services.security import verify_lock_code
+from jravis_backend.services.printify_service import (
+    upload_image,
+    create_product_draft,
+)
+from jravis_backend.services.security import check_lock_code
 
-router = APIRouter()
+router = APIRouter(prefix="/api/publish", tags=["POD"])
 
 
-def load_pod(product_id: str):
-    path = f"data/listings_pod/{product_id}.json"
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
+@router.post("/draft_pod/{pod_id}")
+def draft_pod(
+    pod_id: str,
+    x_lock_code: str = Header(default=None, alias="X-LOCK-CODE"),
+):
+    # -------------------------------
+    # SECURITY
+    # -------------------------------
+    check_lock_code(x_lock_code)
+
+    # -------------------------------
+    # LOAD POD JSON
+    # -------------------------------
+    json_path = f"data/listings_pod/{pod_id}.json"
+
+    if not os.path.exists(json_path):
         raise HTTPException(status_code=404, detail="POD JSON not found")
 
+    with open(json_path, "r") as f:
+        pod = json.load(f)
 
-@router.post(
-    "/api/publish/draft_pod/{product_id}",
-    dependencies=[Depends(verify_lock_code)]
-)
-def draft_pod(product_id: str):
+    # -------------------------------
+    # VALIDATE REQUIRED FIELDS
+    # -------------------------------
+    required = [
+        "title",
+        "description",
+        "blueprint_id",
+        "print_provider_id",
+        "variants",
+        "design_image",
+    ]
 
-    p = load_pod(product_id)
-
-    image_id = upload_image(p["design_image"])
-
-    result = create_product_draft(
-        title=p["title"],
-        description=p["description"],
-        blueprint_id=p["blueprint_id"],
-        provider_id=p["print_provider_id"],
-        image_id=image_id,
-        variants=p["variants"],
-        price=p["price"]
-    )
-
-    return {"status": "draft_created", "product_id": result.get("id")}
-
-@router.post(
-    "/api/publish/batch_pod",
-    dependencies=[Depends(verify_lock_code)]
-)
-def batch_pod_upload():
-
-    base = "data/listings_pod"
-    results = []
-
-    if not os.path.exists(base):
-        raise HTTPException(status_code=500, detail="listings_pod folder missing")
-
-    for fname in os.listdir(base):
-        if not fname.endswith(".json"):
-            continue
-
-        path = os.path.join(base, fname)
-
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                p = json.load(f)
-
-            image_id = upload_image(p["design_image"])
-
-            prod_id = create_product(
-                title=p["title"],
-                description=p["description"],
-                blueprint_id=p["blueprint_id"],
-                provider_id=p["print_provider_id"],
-                image_id=image_id,
-                variants=p["variants"],
-                price=p["price"]
+    for field in required:
+        if field not in pod:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required field: {field}",
             )
 
-            results.append({
-                "file": fname,
-                "status": "success",
-                "printify_product_id": prod_id
-            })
+    # -------------------------------
+    # UPLOAD IMAGE TO PRINTIFY
+    # -------------------------------
+    image_path = pod["design_image"]
 
-        except Exception as e:
-            results.append({
-                "file": fname,
-                "status": "failed",
-                "error": str(e)
-            })
+    if not os.path.exists(image_path):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Design image not found: {image_path}",
+        )
+
+    image_id = upload_image(image_path)
+
+    # -------------------------------
+    # SHOP ID
+    # -------------------------------
+    shop_id = os.getenv("PRINTIFY_SHOP_ID")
+    if not shop_id:
+        raise HTTPException(
+            status_code=500,
+            detail="PRINTIFY_SHOP_ID env variable not set",
+        )
+
+    # -------------------------------
+    # BUILD PRINTIFY PAYLOAD
+    # -------------------------------
+    payload = {
+        "title": pod["title"],
+        "description": pod["description"],
+        "blueprint_id": pod["blueprint_id"],
+        "print_provider_id": pod["print_provider_id"],
+        "variants": pod["variants"],
+        "print_areas": [
+            {
+                "variant_ids": [v["id"] for v in pod["variants"]],
+                "placeholders": [
+                    {
+                        "position": "front",
+                        "images": [
+                            {
+                                "id": image_id,
+                                "x": 0.5,
+                                "y": 0.5,
+                                "scale": 1,
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+
+    # -------------------------------
+    # CREATE DRAFT PRODUCT
+    # -------------------------------
+    result = create_product_draft(shop_id, payload)
 
     return {
-        "total": len(results),
-        "results": results
+        "status": "success",
+        "product_id": result.get("id"),
+        "title": result.get("title"),
     }
+
