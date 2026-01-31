@@ -1,4 +1,5 @@
 import os
+import base64
 import requests
 
 BASE = "https://api.printify.com/v1"
@@ -7,42 +8,61 @@ API_KEY = os.getenv("PRINTIFY_API_KEY")
 SHOP_ID = os.getenv("PRINTIFY_SHOP_ID")
 
 
-# ===============================
-# Upload image to Printify
-# ===============================
-def upload_image(path: str) -> str:
-    url = f"{BASE}/uploads/images.json"
-
-    headers = {
-        "Authorization": f"Bearer {API_KEY}"
+# -------------------------
+# headers
+# -------------------------
+def _headers():
+    return {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
     }
 
-    with open(path, "rb") as f:
-        files = {
-            "file_name": (None, os.path.basename(path)),
-            "contents": (os.path.basename(path), f, "image/png"),
-        }
 
-        r = requests.post(url, headers=headers, files=files)
+# -------------------------
+# image upload (safe)
+# -------------------------
+def upload_image(path_or_url: str) -> str:
+    """
+    If URL -> return URL directly (best method)
+    If local file -> upload to printify
+    """
 
-    if r.status_code != 200:
+    if path_or_url.startswith("http"):
+        return path_or_url
+
+    with open(path_or_url, "rb") as f:
+        encoded = base64.b64encode(f.read()).decode()
+
+    payload = {
+        "file_name": os.path.basename(path_or_url),
+        "contents": encoded
+    }
+
+    r = requests.post(
+        f"{BASE}/uploads/images.json",
+        headers=_headers(),
+        json=payload
+    )
+
+    if r.status_code not in [200, 201]:
         raise Exception(f"Printify image upload failed: {r.status_code} {r.text}")
 
     return r.json()["id"]
 
 
-# ===============================
-# Create product draft
-# ===============================
-def create_product_draft(shop_id: str, payload: dict):
-    url = f"{BASE}/shops/{shop_id}/products.json"
+# -------------------------
+# MAIN FUNCTION (THIS ONE)
+# -------------------------
+def create_product_draft(shop_id: int, payload: dict):
+    """
+    Creates Printify draft product
+    """
 
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    r = requests.post(url, headers=headers, json=payload)
+    r = requests.post(
+        f"{BASE}/shops/{shop_id}/products.json",
+        headers=_headers(),
+        json=payload
+    )
 
     if r.status_code not in [200, 201]:
         raise Exception(f"Printify product create failed: {r.status_code} {r.text}")
