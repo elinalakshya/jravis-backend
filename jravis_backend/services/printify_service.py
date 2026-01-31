@@ -1,63 +1,21 @@
 import os
-import base64
 import requests
 
-PRINTIFY_API_KEY = os.getenv("PRINTIFY_API_KEY")
+BASE = "https://api.printify.com/v1"
+TOKEN = os.getenv("PRINTIFY_API_KEY")
+
+HEADERS = {
+    "Authorization": f"Bearer {TOKEN}",
+    "Content-Type": "application/json"
+}
 
 
-def _headers():
-    if not PRINTIFY_API_KEY:
-        raise Exception("PRINTIFY_API_KEY not set in environment")
-    return {
-        "Authorization": f"Bearer {PRINTIFY_API_KEY}",
-        "Content-Type": "application/json",
-    }
+def create_product_draft(shop_id: int, payload: dict):
+    url = f"{BASE}/shops/{shop_id}/products.json"
 
+    r = requests.post(url, headers=HEADERS, json=payload)
 
-# -------------------------------
-# Upload image to Printify (BASE64)
-# -------------------------------
-def upload_image(image_path: str) -> str:
-    if not os.path.exists(image_path):
-        raise Exception(f"Design image not found: {image_path}")
-
-    with open(image_path, "rb") as f:
-        encoded = base64.b64encode(f.read()).decode("utf-8")
-
-    payload = {
-        "file_name": os.path.basename(image_path),
-        "contents": encoded,
-    }
-
-    url = "https://api.printify.com/v1/uploads/images.json"
-
-    r = requests.post(
-        url,
-        headers=_headers(),
-        json=payload,
-        timeout=60,
-    )
-
-    if r.status_code not in (200, 201):
-        raise Exception(f"Printify image upload failed: {r.status_code} {r.text}")
-
-    return r.json()["id"]
-
-
-# -------------------------------
-# Create product draft
-# -------------------------------
-def create_product_draft(shop_id: str, payload: dict) -> dict:
-    url = f"https://api.printify.com/v1/shops/{shop_id}/products.json"
-
-    r = requests.post(
-        url,
-        headers=_headers(),
-        json=payload,
-        timeout=60,
-    )
-
-    if r.status_code not in (200, 201):
+    if not r.ok:
         raise Exception(f"Printify product create failed: {r.status_code} {r.text}")
 
     return r.json()
