@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from fastapi import APIRouter, Header, HTTPException
 import json
 import os
@@ -73,4 +74,89 @@ def draft_pod(
         "product_id": result["id"],
         "title": result["title"],
     }
+=======
+# services/api/publish.py
+
+import os
+from fastapi import APIRouter, Header, HTTPException
+from pydantic import BaseModel
+
+from jravis_backend.services.printify_service import create_product_draft
+
+
+router = APIRouter()
+
+
+# =========================================================
+# Request Model
+# =========================================================
+
+class PODDraftRequest(BaseModel):
+    title: str
+    description: str
+    price: int
+    design_image: str   # Printify image ID (NOT url)
+
+
+# =========================================================
+# Helpers
+# =========================================================
+
+LOCK_CODE = os.getenv("JRAVIS_LOCK_CODE")
+SHOP_ID = os.getenv("PRINTIFY_SHOP_ID")
+
+
+def verify_lock(code: str):
+    if not LOCK_CODE or code != LOCK_CODE:
+        raise HTTPException(status_code=401, detail="Invalid lock code")
+
+
+# =========================================================
+# Routes
+# =========================================================
+
+@router.post("/api/publish/draft_pod/{pod_id}")
+def draft_pod(
+    pod_id: str,
+    payload: PODDraftRequest,
+    x_lock_code: str = Header(None)
+):
+    """
+    Create Printify draft product
+
+    Requires:
+    - title
+    - description
+    - price
+    - design_image (Printify image ID)
+
+    Security:
+    - X-LOCK-CODE header required
+    """
+
+    # 🔐 Lock protection
+    verify_lock(x_lock_code)
+
+    if not SHOP_ID:
+        raise HTTPException(status_code=500, detail="PRINTIFY_SHOP_ID missing in env")
+
+    try:
+        product_payload = {
+            "title": payload.title,
+            "description": payload.description,
+            "price": payload.price,
+            "design_image": payload.design_image
+        }
+
+        result = create_product_draft(SHOP_ID, product_payload)
+
+        return {
+            "status": "success",
+            "pod_id": pod_id,
+            "product": result
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+>>>>>>> ba32f27 (fix publish route)
 
