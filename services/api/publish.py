@@ -1,51 +1,82 @@
-from fastapi import APIRouter, HTTPException, Header
-from pydantic import BaseModel
-import requests
 import os
+import requests
+from fastapi import APIRouter, Depends, Header, HTTPException
+from pydantic import BaseModel
 
-router = APIRouter()
-
-PRINTIFY_API_KEY = os.getenv("PRINTIFY_API_KEY")
-SHOP_ID = os.getenv("PRINTIFY_SHOP_ID")
-LOCK_CODE = os.getenv("LOCK_CODE", "Lock2040")
-
-
-class PublishRequest(BaseModel):
-    title: str
-    description: str
-    price: int
-    design_image: str
+router = APIRouter(prefix="/api/publish", tags=["POD Publish"])
 
 
-def auth_lock(code: str):
-    if code != LOCK_CODE:
+# =========================================================
+# 🔐 LOCK SECURITY (Boss Protection)
+# =========================================================
+def verify_lock_code(x_lock_code: str = Header(None)):
+    lock_code = os.getenv("LOCK_CODE")
+
+    if not lock_code:
+        raise HTTPException(status_code=500, detail="LOCK_CODE not set on server")
+
+    if not x_lock_code:
+        raise HTTPException(status_code=401, detail="Lock code missing")
+
+    if x_lock_code.strip() != lock_code.strip():
         raise HTTPException(status_code=401, detail="Invalid lock code")
 
 
-def create_printify_product(title, description, price, image_id):
-    url = f"https://api.printify.com/v1/shops/{SHOP_ID}/products.json"
+# =========================================================
+# 📦 Request Model
+# =========================================================
+class PublishPayload(BaseModel):
+    title: str
+    description: str
+    price: int
+    design_image: str   # Printify uploaded image ID
 
-    payload = {
-        "title": title,
-        "description": description,
-        "blueprint_id": 6,          # Unisex Heavy Cotton Tee
-        "print_provider_id": 99,    # Printify Choice
+
+# =========================================================
+# 🚀 MAIN PUBLISH ROUTE
+# =========================================================
+@router.post("/draft_pod/{draft_id}")
+def publish_product(
+    draft_id: str,
+    payload: PublishPayload,
+    _: None = Depends(verify_lock_code)
+):
+    """
+    Creates + publishes product directly to Printify shop
+    """
+
+    api_key = os.getenv("PRINTIFY_API_KEY")
+    shop_id = os.getenv("PRINTIFY_SHOP_ID")
+
+    if not api_key or not shop_id:
+        raise HTTPException(status_code=500, detail="Printify env missing")
+
+    # =====================================================
+    # Product template (safe defaults)
+    # Blueprint 6 = Unisex Heavy Cotton Tee
+    # Provider 99 = Printify Choice
+    # =====================================================
+    product_body = {
+        "title": payload.title,
+        "description": payload.description,
+        "blueprint_id": 6,
+        "print_provider_id": 99,
         "variants": [
             {
-                "id": 1,
-                "price": price * 100,
+                "id": 401,   # default variant
+                "price": payload.price * 100,
                 "is_enabled": True
             }
         ],
         "print_areas": [
             {
-                "variant_ids": [1],
+                "variant_ids": [401],
                 "placeholders": [
                     {
                         "position": "front",
                         "images": [
                             {
-                                "id": image_id,
+                                "id": payload.design_image,
                                 "x": 0.5,
                                 "y": 0.5,
                                 "scale": 1,
@@ -59,28 +90,43 @@ def create_printify_product(title, description, price, image_id):
     }
 
     headers = {
-        "Authorization": f"Bearer {PRINTIFY_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
 
-    r = requests.post(url, json=payload, headers=headers)
-
-    if r.status_code not in (200, 201):
-        raise HTTPException(status_code=500, detail=r.text)
-
-    return r.json()
-
-
-@router.post("/api/publish/draft_pod/{draft_id}")
-def publish_pod(draft_id: str, body: PublishRequest, x_lock_code: str = Header(...)):
-    auth_lock(x_lock_code)
-
-    product = create_printify_product(
-        body.title,
-        body.description,
-        body.price,
-        body.design_image
+    # =====================================================
+    # Step 1: Create product
+    # =====================================================
+    create = requests.post(
+        f"https://api.printify.com/v1/shops/{shop_id}/products.json",
+        json=product_body,
+        headers=headers
     )
 
-    return {"status": "success", "product": product}
+    if create.status_code != 201:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Printify create failed: {create.text}"
+        )
+
+    product_id = create.json()["id"]
+
+    # =====================================================
+    # Step 2: Publish product
+    # =====================================================
+    publish = requests.post(
+        f"https://api.printify.com/v1/shops/{shop_id}/products/{product_id}/publish.json",
+        headers=headers
+    )
+
+    if publish.status_code != 200:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Publish failed: {publish.text}"
+        )
+
+    return {
+        "status": "success",
+        "product_id": product_id
+    }
 
