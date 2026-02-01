@@ -60,3 +60,6 @@ def publish_printify_product():
     print("🛍 Product Published:", product_resp)
 
     return product_resp
+
+if __name__ == "__main__":
+    print("🚀 Running publisher...")
