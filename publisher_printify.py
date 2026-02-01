@@ -1,3 +1,5 @@
+print("🚀 JRAVIS POD STARTED")
+
 import requests
 import base64
 from settings import PRINTIFY_API_KEY, OPENAI_API_KEY
