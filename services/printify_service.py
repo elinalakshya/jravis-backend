@@ -1,90 +1,59 @@
 import os
 import requests
 
-PRINTIFY_TOKEN = os.getenv("PRINTIFY_TOKEN")
+PRINTIFY_API_KEY = os.getenv("PRINTIFY_API_KEY")
 PRINTIFY_SHOP_ID = os.getenv("PRINTIFY_SHOP_ID")
 
 BASE = "https://api.printify.com/v1"
 
-HEADERS = {
-    "Authorization": f"Bearer {PRINTIFY_TOKEN}",
-    "Content-Type": "application/json"
-}
 
+def create_product(title, description, price, image_id):
 
-# =========================================================
-# Upload image to Printify
-# =========================================================
-def upload_image(file_name: str, image_url: str) -> str:
-    """
-    Upload external image URL to Printify
-    returns image_id
-    """
-
-    url = f"{BASE}/uploads/images.json"
-
-    payload = {
-        "file_name": file_name,
-        "url": image_url
+    headers = {
+        "Authorization": f"Bearer {PRINTIFY_API_KEY}",
+        "Content-Type": "application/json"
     }
 
-    r = requests.post(url, headers=HEADERS, json=payload)
-    r.raise_for_status()
+    blueprint_id = 6
+    provider_id = 99
 
-    data = r.json()
-    return data["id"]
-
-
-# =========================================================
-# Create POD product (T-shirt blueprint 6 provider 99)
-# =========================================================
-def create_pod_product(
-    title: str,
-    description: str,
-    price: int,
-    design_image_id: str
-) -> str:
-    """
-    Creates product in Printify shop
-    returns product_id
-    """
-
-    # 🔥 Boss: we use ONLY white S–3XL (fast + stable)
+    # ✅ EXACT SAME IDS USED EVERYWHERE
     variant_ids = [
-        12102,  # S
-        12101,  # M
-        12100,  # L
-        12103,  # XL
-        12104,  # 2XL
-        12105   # 3XL
+        12126,  # S
+        12125,  # M
+        12124,  # L
+        12127,  # XL
+        12128,  # 2XL
+        12129   # 3XL
     ]
 
-    url = f"{BASE}/shops/{PRINTIFY_SHOP_ID}/products.json"
+    variants = [
+        {
+            "id": v,
+            "price": price * 100,
+            "is_enabled": True
+        }
+        for v in variant_ids
+    ]
 
     payload = {
         "title": title,
         "description": description,
-        "blueprint_id": 6,
-        "print_provider_id": 99,
+        "blueprint_id": blueprint_id,
+        "print_provider_id": provider_id,
 
-        "variants": [
-            {
-                "id": vid,
-                "price": price,
-                "is_enabled": True
-            }
-            for vid in variant_ids
-        ],
+        # ✅ must match
+        "variants": variants,
 
         "print_areas": [
             {
-                "variant_ids": variant_ids,
+                "variant_ids": variant_ids,  # SAME LIST
                 "placeholders": [
                     {
                         "position": "front",
                         "images": [
                             {
-                                "id": design_image_id,
+                                "id": image_id,
                                 "x": 0.5,
                                 "y": 0.5,
                                 "scale": 1,
@@ -97,23 +66,14 @@ def create_pod_product(
         ]
     }
 
-    r = requests.post(url, headers=HEADERS, json=payload)
+    r = requests.post(
+        f"{BASE}/shops/{PRINTIFY_SHOP_ID}/products.json",
+        headers=headers,
+        json=payload
+    )
 
     if not r.ok:
         raise Exception(f"Printify create failed: {r.text}")
 
-    data = r.json()
-    return data["id"]
-
-
-# =========================================================
-# Publish product (make visible in store)
-# =========================================================
-def publish_product(product_id: str):
-    url = f"{BASE}/shops/{PRINTIFY_SHOP_ID}/products/{product_id}/publish.json"
-
-    r = requests.post(url, headers=HEADERS, json={})
-    r.raise_for_status()
-
-    return True
+    return r.json()
 
