@@ -1,68 +1,84 @@
+import os
+import requests
+import base64
 from openai import OpenAI
-import requests, os
-from dotenv import load_dotenv
 
-load_dotenv()
 client = OpenAI()
 
 PRINTIFY_API_KEY = os.getenv("PRINTIFY_API_KEY")
-SHOP_ID = os.getenv("PRINTIFY_SHOP_ID")
+PRINTIFY_SHOP_ID = os.getenv("PRINTIFY_SHOP_ID")
 
 
-def upload_to_printify(image_b64, idx):
-    resp = requests.post(
-        "https://api.printify.com/v1/uploads/images.json",
-        headers={"Authorization": f"Bearer {PRINTIFY_API_KEY}"},
-        json={
-            "file_name": f"design{idx}.png",
-            "contents": image_b64
-        }
-    )
+headers = {
+    "Authorization": f"Bearer {PRINTIFY_API_KEY}",
+    "Content-Type": "application/json"
+}
 
-    data = resp.json()
 
-    if "preview_url" not in data:
-        print("❌ Upload failed:", data)
-        return None
+def run_pod(count=5):
 
-    return data["preview_url"]
+    print("SHOP ID =", PRINTIFY_SHOP_ID)
 
-def run_pod(count=20):
     for i in range(count):
-        try:
-            prompt = f"Minimal bold motivational t-shirt quote {i+1}"
-            print("🎨 Generating:", prompt)
 
-            img = client.images.generate(
-                model="gpt-image-1",
-                prompt=prompt,
-                size="1024x1024"
-            )
+        prompt = f"Minimal bold motivational t-shirt quote {i+1}"
+        print("🎨 Generating:", prompt)
 
-            image_b64 = img.data[0].b64_json
+        # 1. generate image
+        img = client.images.generate(
+            model="gpt-image-1",
+            prompt=prompt,
+            size="1024x1024"
+        )
 
-            image_url = upload_to_printify(image_b64, i)
+        image_base64 = img.data[0].b64_json
 
-            if not image_url:
-                continue
-
-            product = {
-                "title": prompt,
-                "description": "JRAVIS Auto Draft",
-                "blueprint_id": 6,
-                "print_provider_id": 1,
-                "is_published": False,
-                "variants": [{"id": 40171, "price": 2200, "is_enabled": True}],
-                "images": [{"src": image_url, "position": "front"}]
+        # 2. upload image
+        upload = requests.post(
+            "https://api.printify.com/v1/uploads/images.json",
+            headers=headers,
+            json={
+                "file_name": f"design{i}.png",
+                "contents": image_base64
             }
+        ).json()
 
-            requests.post(
-                f"https://api.printify.com/v1/shops/{SHOP_ID}/products.json",
-                headers={"Authorization": f"Bearer {PRINTIFY_API_KEY}"},
-                json=product
-            )
+        image_url = upload.get("preview_url")  # IMPORTANT
 
+        if not image_url:
+            print("❌ upload failed:", upload)
+            continue
+
+        # 3. create draft product
+        product = {
+            "title": prompt,
+            "description": "Created automatically by JRAVIS",
+            "blueprint_id": 6,
+            "print_provider_id": 1,
+            "visible": False,   # ⭐ REQUIRED FOR DRAFT
+            "variants": [
+                {
+                    "id": 40171,
+                    "price": 2200,
+                    "is_enabled": True
+                }
+            ],
+            "images": [
+                {
+                    "src": image_url,
+                    "position": "front",
+                    "is_default": True
+                }
+            ]
+        }
+
+        resp = requests.post(
+            f"https://api.printify.com/v1/shops/{PRINTIFY_SHOP_ID}/products.json",
+            headers=headers,
+            json=product
+        )
+
+        if resp.status_code == 201:
             print("✅ Draft created")
-
-        except Exception as e:
-            print("❌ POD job error:", e)
+        else:
+            print("❌ Product failed:", resp.text)
