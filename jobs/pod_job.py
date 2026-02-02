@@ -1,13 +1,8 @@
 import os
 import requests
-import base64
-from openai import OpenAI
-
-client = OpenAI()
 
 PRINTIFY_API_KEY = os.getenv("PRINTIFY_API_KEY")
 PRINTIFY_SHOP_ID = os.getenv("PRINTIFY_SHOP_ID")
-
 
 headers = {
     "Authorization": f"Bearer {PRINTIFY_API_KEY}",
@@ -15,59 +10,25 @@ headers = {
 }
 
 
-def run_pod(count=5):
+def run_pod(count=20):
 
     print("SHOP ID =", PRINTIFY_SHOP_ID)
 
     for i in range(count):
 
-        prompt = f"Minimal bold motivational t-shirt quote {i+1}"
-        print("🎨 Generating:", prompt)
+        title = f"Minimal Motivational Quote #{i+1}"
 
-        # 1. generate image
-        img = client.images.generate(
-            model="gpt-image-1",
-            prompt=prompt,
-            size="1024x1024"
-        )
-
-        image_base64 = img.data[0].b64_json
-
-        # 2. upload image
-        upload = requests.post(
-            "https://api.printify.com/v1/uploads/images.json",
-            headers=headers,
-            json={
-                "file_name": f"design{i}.png",
-                "contents": image_base64
-            }
-        ).json()
-
-        image_url = upload.get("preview_url")  # IMPORTANT
-
-        if not image_url:
-            print("❌ upload failed:", upload)
-            continue
-
-        # 3. create draft product
         product = {
-            "title": prompt,
-            "description": "Created automatically by JRAVIS",
+            "title": title,
+            "description": "Minimal bold text t-shirt",
             "blueprint_id": 6,
             "print_provider_id": 1,
-            "visible": False,   # ⭐ REQUIRED FOR DRAFT
+            "visible": False,
             "variants": [
                 {
                     "id": 40171,
                     "price": 2200,
                     "is_enabled": True
-                }
-            ],
-            "images": [
-                {
-                    "src": image_url,
-                    "position": "front",
-                    "is_default": True
                 }
             ]
         }
@@ -81,4 +42,4 @@ def run_pod(count=5):
         if resp.status_code == 201:
             print("✅ Draft created")
         else:
-            print("❌ Product failed:", resp.text)
+            print("❌ Error:", resp.text)
