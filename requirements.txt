@@ -4,3 +4,7 @@ requests
 pydantic
 openai
 reportlab
+
+openai
+requests
+python-dotenv
