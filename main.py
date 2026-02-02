@@ -28,7 +28,7 @@ def health():
 # MANUAL TRIGGER (optional but useful)
 # You can hit this URL anytime to run drafts
 # ============================================
-@app.post("/run-drafts-now")
+@app.get("/run-drafts-now")
 def manual_run():
     run_factory()
     return {"status": "Draft factory executed manually"}
