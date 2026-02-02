@@ -21,12 +21,11 @@ def upload_to_printify(image_b64, idx):
 
     data = resp.json()
 
-    if resp.status_code != 200 or "url" not in data:
-        print("❌ Printify upload failed:", data)
+    if "preview_url" not in data:
+        print("❌ Upload failed:", data)
         return None
 
-    return data["url"]
-
+    return data["preview_url"]
 
 def run_pod(count=20):
     for i in range(count):
