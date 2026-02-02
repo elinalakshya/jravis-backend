@@ -1,65 +1,117 @@
 print("🚀 JRAVIS POD STARTED")
 
-import requests
-import base64
-from settings import PRINTIFY_API_KEY, OPENAI_API_KEY
-import openai
 import os
+import base64
+import requests
+from dotenv import load_dotenv
+from openai import OpenAI
 
-openai.api_key = OPENAI_API_KEY
+# -------------------------------------------------
+# Load environment variables (.env)
+# -------------------------------------------------
+load_dotenv()
 
-PRINTIFY_SHOP_ID = "YOUR_SHOP_ID"  # Fill using your Printify shop ID
+PRINTIFY_API_KEY = os.getenv("PRINTIFY_API_KEY")
+PRINTIFY_SHOP_ID = os.getenv("PRINTIFY_SHOP_ID")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+if not PRINTIFY_API_KEY or not PRINTIFY_SHOP_ID or not OPENAI_API_KEY:
+    raise Exception("❌ Missing keys in .env file")
+
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+
+# -------------------------------------------------
+# Step 1 — Generate AI prompt
+# -------------------------------------------------
 def ai_generate_design_prompt():
-    response = openai.chat.completions.create(
+    res = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": "Generate a high-quality POD design concept in 10 words"}]
+        messages=[{
+            "role": "user",
+            "content": "Create a short trendy motivational t-shirt design idea (5-8 words only)"
+        }]
     )
-    return response.choices[0].message.content
+    return res.choices[0].message.content.strip()
 
 
-def publish_printify_product():
-    prompt = ai_generate_design_prompt()
-    print("🎨 Printify Prompt:", prompt)
-
-    # 1. Generate an AI image
-    img = openai.images.generate(
+# -------------------------------------------------
+# Step 2 — Generate AI image
+# -------------------------------------------------
+def generate_image(prompt):
+    img = client.images.generate(
         model="gpt-image-1",
         prompt=prompt,
         size="1024x1024"
     )
+    return img.data[0].b64_json
 
-    image_base64 = img.data[0].b64_json
 
-    # 2. Upload image to Printify
-    img_upload = requests.post(
+# -------------------------------------------------
+# Step 3 — Upload to Printify
+# -------------------------------------------------
+def upload_to_printify(image_base64):
+    resp = requests.post(
         "https://api.printify.com/v1/uploads/images.json",
         headers={"Authorization": f"Bearer {PRINTIFY_API_KEY}"},
-        json={"file_name": "design.png", "contents": image_base64}
+        json={
+            "file_name": "design.png",
+            "contents": image_base64
+        }
     ).json()
 
-    image_url = img_upload.get("url")
-    print("🖼 Uploaded Image:", image_url)
+    return resp["url"]
 
-    # 3. Create POD product
+
+# -------------------------------------------------
+# Step 4 — Create product
+# -------------------------------------------------
+def create_product(image_url, title):
     product_data = {
-        "title": f"Auto Design – {prompt}",
-        "description": "Created by JRAVIS Automation",
-        "blueprint_id": 6,  # Unisex T-shirt
+        "title": f"{title} | JRAVIS POD",
+        "description": "Auto-generated design by JRAVIS",
+        "blueprint_id": 6,
         "print_provider_id": 1,
-        "variants": [{"id": 40171, "price": 2200, "is_enabled": True}],
-        "images": [{"src": image_url, "position": "front", "is_default": True}]
+        "variants": [
+            {"id": 40171, "price": 2200, "is_enabled": True}
+        ],
+        "images": [
+            {"src": image_url, "position": "front", "is_default": True}
+        ]
     }
 
-    product_resp = requests.post(
+    resp = requests.post(
         f"https://api.printify.com/v1/shops/{PRINTIFY_SHOP_ID}/products.json",
         headers={"Authorization": f"Bearer {PRINTIFY_API_KEY}"},
         json=product_data
     ).json()
 
-    print("🛍 Product Published:", product_resp)
+    return resp
 
-    return product_resp
 
+# -------------------------------------------------
+# MAIN RUNNER
+# -------------------------------------------------
+def run():
+    print("⚡ Generating prompt...")
+    prompt = ai_generate_design_prompt()
+    print("🎨 Prompt:", prompt)
+
+    print("🖼 Generating image...")
+    image_b64 = generate_image(prompt)
+
+    print("⬆ Uploading to Printify...")
+    image_url = upload_to_printify(image_b64)
+
+    print("🛍 Creating product...")
+    product = create_product(image_url, prompt)
+
+    print("✅ SUCCESS PRODUCT CREATED")
+    print(product)
+
+
+# -------------------------------------------------
+# ENTRY POINT (IMPORTANT)
+# -------------------------------------------------
 if __name__ == "__main__":
-    print("🚀 Running publisher...")
+    run()
