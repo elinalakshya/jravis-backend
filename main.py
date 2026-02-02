@@ -3,6 +3,9 @@ from fastapi import FastAPI
 from api.factory import router as factory_router
 from services.api.publish import router as publish_router
 
+import os
+print("PRINTIFY KEY =", os.getenv("PRINTIFY_API_KEY"))
+
 app = FastAPI(title="JRAVIS Backend")
 
 app.include_router(factory_router)
