@@ -8,3 +8,4 @@ reportlab
 openai
 requests
 python-dotenv
+apscheduler
