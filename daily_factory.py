@@ -7,8 +7,8 @@ def run_factory():
     run_pod(20)
     run_gumroad(10)
     run_payhip(10)
-    run_shopify(10)
-    print("✅ DAILY DRAFT FACTORY COMPLETED")
+    # run_shopify(10)   # disabled for now
+    print("✅ DAILY FACTORY COMPLETED")
 
 if __name__ == "__main__":
     run_factory()
