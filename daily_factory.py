@@ -1,14 +1,18 @@
 from jobs.pod_job import run_pod
 from jobs.gumroad_job import run_gumroad
 from jobs.payhip_job import run_payhip
-from jobs.shopify_job import run_shopify
+
 
 def run_factory():
-    run_pod(20)
-    run_gumroad(10)
-    run_payhip(10)
-    # run_shopify(10)   # disabled for now
+    print("🚀 JRAVIS PHASE-1 FACTORY STARTED")
+
+    # ⭐ PHASE 1 VOLUME
+    run_pod(50)        # 50 Printify POD
+    run_gumroad(20)    # 20 Gumroad
+    run_payhip(20)     # 20 Payhip
+
     print("✅ DAILY FACTORY COMPLETED")
+
 
 if __name__ == "__main__":
     run_factory()
