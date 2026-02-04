@@ -29,6 +29,7 @@ def health():
 # You can hit this URL anytime to run drafts
 # ============================================
 @app.get("/run-drafts-now")
+@app.post("/run-drafts-now")
 def manual_run():
     run_factory()
     return {"status": "Draft factory executed manually"}
